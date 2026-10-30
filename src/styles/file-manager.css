@@ -700,6 +700,7 @@
   position: absolute;
   top: 0.55rem;
   left: 0.55rem;
+  z-index: 5;
   width: 15px;
   height: 15px;
   margin: 0;
@@ -728,33 +729,41 @@
   box-shadow: var(--ring);
 }
 
-/* Quick action: lebih tombol kanan-atas */
+/* Quick action: kotak tombol kanan-atas — SELALU terlihat & di ATAS layer
+   thumbnail (z-index wajib: .fm-card-thumb position:relative muncul setelah
+   tombol di DOM dan menutup hit-area bila tanpa z-index → klik titik-3
+   ditangkap elemen thumb dan malah membuka folder). */
 .fm-card-menu-btn {
   position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  background: transparent;
-  border: none;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 5;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
   cursor: pointer;
-  padding: 0.3rem;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity var(--dur-fast), background var(--dur-fast), color var(--dur-fast);
+  opacity: 0.9;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), opacity var(--dur-fast);
 }
 .fm-card-menu-btn:hover {
   background: var(--surface-hover);
+  border-color: var(--border-strong);
   color: var(--text);
+  opacity: 1;
 }
-.fm-card:hover .fm-card-menu-btn,
-.fm-card-menu-btn:focus-visible,
-.fm-card.selected .fm-card-menu-btn { opacity: 1; }
+.fm-card-menu-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
 
 @media (max-width: 767px) {
-  .fm-card-select-btn,
   .fm-card-menu-btn { opacity: 1; }
 }
 
@@ -1018,7 +1027,7 @@
 .fm-staged-list-item:hover { background: var(--surface-hover); }
 .fm-staged-op {
   flex-shrink: 0;
-  font-size: 0.625rem;
+  font-size: var(--fs-11);
   font-weight: var(--fw-bold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1185,4 +1194,46 @@
   pointer-events: none;
   z-index: calc(var(--z-overlay) - 40);
   border-radius: 3px;
+}
+
+/* ============================================================
+   LIFE LAYER — kartu & grid yang bernapas (keyframe di life.css)
+   ============================================================ */
+
+/* Grid: kartu masuk satu per satu. --i di-set inline dari renderer. */
+.fm-grid.hs-stagger > .fm-card {
+  animation: hs-card-rise 0.34s var(--ease-out, ease) both;
+  animation-delay: calc(var(--stagger-step, 45ms) * var(--i, 0));
+}
+@keyframes hs-card-rise {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Hover kartu: terangkat + resang cahaya amber tipis */
+.fm-card:hover {
+  box-shadow: var(--shadow-md), 0 0 24px -14px var(--accent-glow);
+}
+.fm-card:active {
+  transform: scale(0.985);
+}
+
+/* Kartu terpilih: sinyal amber hidup, bukan hanya border */
+.fm-card.selected {
+  animation: hs-card-pulse 2.2s ease-in-out 1;
+}
+@keyframes hs-card-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--accent); }
+  35%      { box-shadow: 0 0 0 1px var(--accent), 0 0 26px -10px var(--accent-glow); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fm-grid.hs-stagger > .fm-card,
+  .fm-card.selected {
+    animation: none !important;
+  }
+  .fm-card:hover {
+    box-shadow: var(--shadow-md);
+  }
+  .fm-card:active { transform: none; }
 }

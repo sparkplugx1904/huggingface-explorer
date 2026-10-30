@@ -5,9 +5,15 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import type { ViewerContext } from './types';
+import { isVideoExtension } from './types';
 import { renderInfoCard } from './info-card';
-import { resolvePrivateFileUrl, triggerFileDownload } from '../../api/tree';
-import { getFromMediaVault, mediaVaultKey } from '../../api/media-cache';
+import { downloadFileBlob, resolvePrivateFileUrl, triggerFileDownload } from '../../api/tree';
+import {
+  getFromMediaVault,
+  putToMediaVault,
+  mediaVaultKey,
+  MEDIA_VAULT_MAX_CACHEABLE_BYTES,
+} from '../../api/media-cache';
 import { showToast } from '../components/toast';
 import { iconDownload, iconAlertCircle } from '../components/icons';
 
@@ -43,11 +49,10 @@ export async function renderMediaViewer(
   // (< 8 jam lalu), putar dari salinan terenkripsi di IndexedDB — jaringan
   // tidak disentuh. Media besar (> 48 MB) tetap streaming HTTP Range agar
   // tidak membebani disk/kuota dengan unduhan utuh.
-  const MAX_VAULT_CACHEABLE_BYTES = 48 * 1024 * 1024;
   let playbackUrl = '';
   let vaultObjectUrl: string | null = null;
 
-  if (file.size <= MAX_VAULT_CACHEABLE_BYTES) {
+  if (file.size <= MEDIA_VAULT_MAX_CACHEABLE_BYTES) {
     const vaultKey = await mediaVaultKey('viewer', repoType, repoId, revision, file.path);
     const cachedBlob = await getFromMediaVault(vaultKey);
     if (cachedBlob) {
@@ -61,7 +66,7 @@ export async function renderMediaViewer(
   }
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-  const isVideo = ['mp4', 'webm', 'mov', 'ogg'].includes(ext);
+  const isVideo = isVideoExtension(ext);
 
   const rootEl = document.createElement('div');
   rootEl.className = 'hs-media-viewer-root';
@@ -160,7 +165,42 @@ export async function renderMediaViewer(
   container.innerHTML = '';
   container.appendChild(rootEl);
 
+  // Tulis ke vault SETELAH streaming berjalan (canplay): media yang benar-benar
+  // ditonton user di-download penuh di background lalu disimpan, sehingga
+  // pembukaan berikutnya tidak men-streaming ulang. Tanpa ini vault hanya
+  // membaca dan audio/video selalu re-fetch dari jaringan.
+  // Unduh background ini dibatalkan saat viewer ditutup (cleanup) supaya
+  // kuota tidak terbuang melanjutkan fetch berkas yang sudah tidak dilihat.
+  let vaultAbort: AbortController | null = null;
+  if (!vaultObjectUrl && file.size <= MEDIA_VAULT_MAX_CACHEABLE_BYTES) {
+    mediaEl.addEventListener(
+      'canplay',
+      () => {
+        vaultAbort = new AbortController();
+        void mediaVaultKey('viewer', repoType, repoId, revision, file.path)
+          .then(async (vaultKeyRef) => {
+            const fullBlob = await downloadFileBlob(
+              repoType,
+              repoId,
+              file.path,
+              revision,
+              token,
+              'resolve',
+              vaultAbort?.signal
+            );
+            await putToMediaVault(vaultKeyRef, fullBlob);
+          })
+          .catch(() => {
+            // Opportunistik: gagal unduh-background/simpan/abort diabaikan
+          });
+      },
+      { once: true }
+    );
+  }
+
   return () => {
+    vaultAbort?.abort();
+    vaultAbort = null;
     mediaEl.pause();
     mediaEl.removeAttribute('src');
     while (mediaEl.firstChild) {

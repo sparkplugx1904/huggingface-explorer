@@ -29,6 +29,7 @@
 
 /* 8. Riwayat commit & baru dihapus */
 @import "./history.css";
+@import "./life.css";
 /* ============================================================
    Utility Classes
    Kecil, satu tujuan. Gunakan hemat — utamakan komponen.

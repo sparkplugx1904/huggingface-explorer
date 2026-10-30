@@ -18,6 +18,7 @@ import {
   invalidateTreeCache,
 } from '../../api/tree';
 import { getRepoInfo } from '../../api/repos';
+import { extractErrorMessage } from '../../api/hf-client';
 import {
   pendingChanges,
   stageAddFile,
@@ -46,7 +47,7 @@ import {
 import { isAnyModalOpen } from '../components/modal';
 import { openActionBottomSheet, openMoveToFolderPicker } from '../components/bottom-sheet';
 import { openFileViewerModal } from '../viewers/viewer-modal';
-import { registerLazyThumbnail } from '../viewers/thumbnail-cache';
+import { registerLazyThumbnail, resetThumbnailObserver } from '../viewers/thumbnail-cache';
 import { openRecentlyDeletedModal } from '../components/recently-deleted';
 import {
   iconFolder,
@@ -80,6 +81,59 @@ import {
 } from '../components/icons';
 
 // ── Utilitas Bantuan ──────────────────────────────────────────────────────
+
+/** Jumlah kartu/baris yang dirender instan saat pertama masuk folder. */
+const FM_RENDER_HEAD = 100;
+
+/** Observer tail chunk — dibuat ulang pada tiap render, dilepas saat penuh. */
+let _fmTailObserver: IntersectionObserver | null = null;
+
+/**
+ * Render sisa item setelah chunk pertama secara bertahap: sentinel di ujung
+ * container dimonitor; begitu mendekati viewport scroll, chunk berikutnya
+ * dirender dan sentinel dianabservasi ulang. Folder ribuan berkas tetap
+ * responsif — render awal tak lagi memblok main thread.
+ */
+function scheduleTailChunks(
+  rootEl: HTMLElement,
+  itemsTotal: number,
+  covered: number,
+  rootScroller: HTMLElement,
+  renderChunk: (start: number, count: number) => void
+): void {
+  _fmTailObserver?.disconnect();
+  _fmTailObserver = null;
+
+  if (covered >= itemsTotal) return;
+
+  const sentinel = document.createElement('div');
+  sentinel.setAttribute('aria-hidden', 'true');
+  sentinel.style.height = '1px';
+  sentinel.style.width = '100%';
+  rootEl.appendChild(sentinel);
+
+  let rendered = covered;
+  const obs = new IntersectionObserver(
+    (entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      const end = Math.min(itemsTotal, rendered + FM_RENDER_HEAD);
+      if (end <= rendered) {
+        obs.disconnect();
+        _fmTailObserver = null;
+        return;
+      }
+      renderChunk(rendered, end - rendered);
+      rendered = end;
+      obs.observe(sentinel);
+    },
+    {
+      root: rootScroller,
+      rootMargin: '640px 0px',
+    }
+  );
+  obs.observe(sentinel);
+  _fmTailObserver = obs;
+}
 
 function esc(s: string): string {
   return s
@@ -187,6 +241,10 @@ export function renderFileManagerPage(
 ): void {
   const repoId = `${owner}/${repoName}`;
   const token = appStore.value.auth.token;
+
+  // Putuskan observasi thumbnail halaman sebelumnya (mencegah memory leak
+  // elemen DOM lama) — cache memori thumbnail sendiri tetap dipertahankan.
+  resetThumbnailObserver();
 
   // State lokal halaman
   let currentPath = initialPath.replace(/^\/+|\/+$/g, '');
@@ -960,18 +1018,27 @@ export function renderFileManagerPage(
 
   function renderGridView(items: FileEntry[]): void {
     const gridEl = document.createElement('div');
-    gridEl.className = 'fm-grid';
+    // Lapisan hidup: kartu masuk berjenjang (guard reduced-motion di CSS)
+    gridEl.className = 'fm-grid hs-stagger';
+    gridEl.style.setProperty('--stagger-step', '22ms');
     gridEl.setAttribute('role', 'grid');
     gridEl.setAttribute('aria-label', 'Kisi Berkas dan Folder');
     gridEl.setAttribute('aria-multiselectable', 'true');
 
-    for (const item of items) {
+    // Chunked rendering: 100 pertama instan, sisanya lazy saat scroll
+    // mendekati dasar (sentinel di footer grid). Folder 2.272 berkas pun
+    // tak lagi memblok main thread saat masuk.
+    const renderItem = (i: number): void => {
+      const item = items[i];
+      if (!item) return;
+      const cardIdx = i;
       const isSelected = selectedPaths.has(item.path);
       const isDir = item.type === 'directory';
       const icon = getFileIconSvg(item.name, isDir, 40);
 
       const card = document.createElement('div');
       card.className = `fm-card ${isSelected ? 'selected' : ''} ${item.stagedStatus ? `staged-badge-${item.stagedStatus}` : ''}`;
+      card.style.setProperty('--i', String(Math.min(cardIdx, 24)));
       card.draggable = true;
       card.dataset.path = item.path;
       card.setAttribute('role', 'row');
@@ -1082,9 +1149,17 @@ export function renderFileManagerPage(
       attachCardDragAndDrop(card, item);
 
       gridEl.appendChild(card);
-    }
+    };
 
+    const headCount = Math.min(items.length, FM_RENDER_HEAD);
+    for (let i = 0; i < headCount; i++) renderItem(i);
+
+    // Sisa kartu masuk setelah grid menempel di DOM — sentinel baru ber-
+    // interseksi dengan viewport scroll.
     contentPanelEl.appendChild(gridEl);
+    scheduleTailChunks(gridEl, items.length, headCount, contentPanelEl, (start, count) => {
+      for (let i = start; i < start + count; i++) renderItem(i);
+    });
   }
 
   function renderListView(items: FileEntry[]): void {
@@ -1115,7 +1190,9 @@ export function renderFileManagerPage(
       refreshFileList();
     });
 
-    for (const item of items) {
+    const renderRow = (i: number): void => {
+      const item = items[i];
+      if (!item) return;
       const isSelected = selectedPaths.has(item.path);
       const isDir = item.type === 'directory';
       const icon = getFileIconSvg(item.name, isDir, 18);
@@ -1237,9 +1314,15 @@ export function renderFileManagerPage(
 
       attachCardDragAndDrop(row, item);
       listEl.appendChild(row);
-    }
+    };
+
+    const listHeadCount = Math.min(items.length, FM_RENDER_HEAD);
+    for (let i = 0; i < listHeadCount; i++) renderRow(i);
 
     contentPanelEl.appendChild(listEl);
+    scheduleTailChunks(listEl, items.length, listHeadCount, contentPanelEl, (start, count) => {
+      for (let i = start; i < start + count; i++) renderRow(i);
+    });
   }
 
   // ── Drag and Drop Universal & OS Drop ───────────────────────────────────
@@ -1942,17 +2025,30 @@ export function renderFileManagerPage(
       refreshFileList();
       updateStagedBar();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
+      const isAuthError = Boolean(
+        err &&
+        typeof err === 'object' &&
+        (('status' in err && err.status === 401) || ('isAuth' in err && err.isAuth === true))
+      );
+      const isPrivateGuest = isAuthError && !token;
+      const message = isPrivateGuest
+        ? 'Repositori ini bersifat privat atau memerlukan autentikasi akun Hugging Face untuk melihat isinya.'
+        : extractErrorMessage(err, 'Gagal memuat isi folder');
       const errorStateEl = createEmptyState({
         icon: iconAlertCircle(44),
-        title: 'Gagal memuat isi folder',
+        title: isPrivateGuest ? 'Akses Terbatas (Privat)' : 'Gagal memuat isi folder',
         description: message,
-        action: {
-          label: 'Coba Lagi',
-          onClick: () => {
-            void loadDirectory(path, true);
-          },
-        },
+        action: isPrivateGuest
+          ? {
+              label: 'Masuk dengan Hugging Face',
+              onClick: () => navigate('/auth'),
+            }
+          : {
+              label: 'Coba Lagi',
+              onClick: () => {
+                void loadDirectory(path, true);
+              },
+            },
       });
       errorStateEl.style.marginTop = '3rem';
       contentPanelEl.innerHTML = '';

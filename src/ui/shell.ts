@@ -470,9 +470,9 @@ function renderSidebar(auth: AuthState): void {
     datasetsContainer.className = 'sidebar-repo-list';
 
     if (isLoading && datasets.length === 0) {
-      datasetsContainer.innerHTML = '<div class="sidebar-empty-hint">Memuat dataset…</div>';
+      datasetsContainer.innerHTML = `<div class="sidebar-empty-hint">${t('nav.datasetsLoading')}</div>`;
     } else if (datasets.length === 0) {
-      datasetsContainer.innerHTML = '<div class="sidebar-empty-hint">Belum ada dataset</div>';
+      datasetsContainer.innerHTML = `<div class="sidebar-empty-hint">${t('nav.datasetsEmpty')}</div>`;
     } else {
       for (const d of datasets.slice(0, 12)) {
         const repoHref = `/${esc(d.owner)}/${esc(d.name)}/dataset`;
@@ -508,9 +508,9 @@ function renderSidebar(auth: AuthState): void {
     modelsContainer.className = 'sidebar-repo-list';
 
     if (isLoading && models.length === 0) {
-      modelsContainer.innerHTML = '<div class="sidebar-empty-hint">Memuat model…</div>';
+      modelsContainer.innerHTML = `<div class="sidebar-empty-hint">${t('nav.modelsLoading')}</div>`;
     } else if (models.length === 0) {
-      modelsContainer.innerHTML = '<div class="sidebar-empty-hint">Belum ada model</div>';
+      modelsContainer.innerHTML = `<div class="sidebar-empty-hint">${t('nav.modelsEmpty')}</div>`;
     } else {
       for (const m of models.slice(0, 12)) {
         const repoHref = `/${esc(m.owner)}/${esc(m.name)}/model`;

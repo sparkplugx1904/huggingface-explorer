@@ -365,6 +365,10 @@ export function initCommandPalette(): void {
     }
     if (e.key === 'Escape' && isPaletteOpen()) {
       e.preventDefault();
+      // Cegah rembles ke listener global di balik palette (shell: tutup
+      // sidebar/dropdown, file-manager: bersihkan pencarian) — menutup palette
+      // tidak boleh memicu aksi pada surface di belakangnya.
+      e.stopPropagation();
       closePalette();
     }
   });

@@ -43,6 +43,10 @@ export const id = {
   },
   nav: {
     home: 'Beranda',
+    datasetsLoading: 'Memuat dataset…',
+    datasetsEmpty: 'Belum ada dataset',
+    modelsLoading: 'Memuat model…',
+    modelsEmpty: 'Belum ada model',
     back: 'Kembali',
     settings: 'Pengaturan',
     theme: 'Tema',
@@ -366,6 +370,25 @@ export const id = {
   footer: {
     disclaimer:
       'HuggingStudio bukan produk resmi Hugging Face. Dibuat untuk keperluan eksplorasi.',
+  },
+  hero: {
+    brand: 'Hugging Face',
+    badge: 'Akses tamu tersedia untuk repo publik',
+    titlePrefix: 'File manager untuk',
+    subtitle:
+      'Jelajahi repo seperti Google Drive, commit seperti GitHub Desktop — langsung dari browser, tanpa install, tanpa server perantara.',
+    wordModel: 'Model',
+    wordDataset: 'Dataset',
+    wordSpace: 'Space',
+    feat1Title: 'Punya repo sendiri',
+    feat1Desc:
+      'Masuk untuk melihat dan mengelola seluruh Model, Dataset, dan Space dari akun maupun organisasi Anda.',
+    feat2Title: 'Editor langsung di browser',
+    feat2Desc: 'Upload, unduh, pindah, dan ganti nama berkas — semua tersimpan dalam satu commit gabungan.',
+    feat3Title: 'Privat & terlindungi',
+    feat3Desc: 'Token OAuth PKCE hanya hidup di memori browser — tidak pernah menyentuh server pihak ketiga.',
+    feat4Title: 'Thumbnail instan',
+    feat4Desc: 'Gambar dan video dirender sebagai pratampilan mini langsung di sisi browser, tanpa server.',
   },
 } as const;
 

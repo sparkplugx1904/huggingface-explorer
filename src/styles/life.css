@@ -1,0 +1,114 @@
+/* ============================================================
+   LIFE LAYER — Gerak & cahaya untuk aplikasi yang "bernapas"
+   ------------------------------------------------------------
+   Prinsip:
+   - Gerak hanya menambah makna (entrance, fokus, feedback),
+     bukan hiasan yang berputar tanpa hasil.
+   - Semua warna dari token semantik tokens.css: amber sebagai
+     aksen cahaya, c1..c6 sebagai warna kategorik live.
+   - prefers-reduced-motion mematikan seluruh lapisan ini.
+   ============================================================ */
+
+/* ── 1. KEYFRAMES INTI ────────────────────────────────────── */
+
+@keyframes hs-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hs-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes hs-pop-in {
+  0%   { opacity: 0; transform: scale(0.96); }
+  60%  { opacity: 1; transform: scale(1.01); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes hs-aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(3%, -4%, 0) scale(1.08); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes hs-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); }
+  50%      { box-shadow: 0 0 0 6px var(--accent-dim); }
+}
+
+@keyframes hs-shine-sweep {
+  from { transform: translateX(-120%) skewX(-12deg); }
+  to   { transform: translateX(240%) skewX(-12deg); }
+}
+
+/* ── 2. UTILITAS ENTRANCE ─────────────────────────────────── */
+
+/* Halaman baru tampil dengan fade + rise penuh keterbacaan */
+.hs-page-in {
+  animation: hs-rise 0.34s var(--ease-out) both;
+}
+
+/* Item berjajar masuk satu per satu via CSS var --i (0,1,2…) */
+.hs-stagger > * {
+  animation: hs-rise 0.42s var(--ease-out) both;
+  animation-delay: calc(var(--stagger-step, 40ms) * var(--i, 0));
+}
+
+/* ── 3. AURORA KANVAS — kanvas tak lagi mati ───────────────── */
+
+/* Ditempel ke elemen konteks halaman penuh (body-level container).
+   Lapisan ::before bergerak sangat lambat; terbatas properti
+   transform saja sehingga di-compositor, tidak repaint. */
+.hs-aurora {
+  position: relative;
+}
+.hs-aurora::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38rem 26rem at 82% 8%, color-mix(in srgb, #f59e0b 8%, transparent), transparent 60%),
+    radial-gradient(42rem 30rem at 10% 90%, color-mix(in srgb, #60a5fa 7%, transparent), transparent 58%),
+    radial-gradient(30rem 22rem at 55% 60%, color-mix(in srgb, #a78bfa 5%, transparent), transparent 55%);
+  animation: hs-aurora-drift 26s ease-in-out infinite alternate;
+  opacity: 0.9;
+}
+[data-theme="light"] .hs-aurora::before {
+  opacity: 0.55;
+  background:
+    radial-gradient(38rem 26rem at 82% 8%, color-mix(in srgb, #d97706 7%, transparent), transparent 60%),
+    radial-gradient(42rem 30rem at 10% 90%, color-mix(in srgb, #2f6fbf 6%, transparent), transparent 58%),
+    radial-gradient(30rem 22rem at 55% 60%, color-mix(in srgb, #7c3aed 4%, transparent), transparent 55%);
+}
+
+/* ── 4. GLOW AKTIF untuk item navigasi/kartu ─────────────────── */
+
+.hs-active-glow {
+  position: relative;
+}
+.hs-active-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+              0 0 18px -6px var(--accent-glow);
+}
+
+/* ── 5. REDUCED MOTION — hormati preferensi user ────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .hs-page-in,
+  .hs-stagger > * {
+    animation: none !important;
+  }
+  .hs-aurora::before {
+    animation: none !important;
+    opacity: 0.5;
+  }
+}

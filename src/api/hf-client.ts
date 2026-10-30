@@ -73,7 +73,10 @@ export async function hfFetch(
     if (activeToken && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:expired'));
     }
-    throw { status: 401, message: 'Authentication expired', isRateLimit: false, isAuth: true } satisfies ApiError;
+    const message = activeToken
+      ? 'Sesi autentikasi telah kedaluwarsa'
+      : 'Repositori ini privat atau memerlukan izin untuk mengakses.';
+    throw { status: 401, message, isRateLimit: false, isAuth: true } satisfies ApiError;
   }
 
   // Handle 429 Rate Limit → catat cooldown dan sertakan nilai Retry-After
@@ -106,4 +109,19 @@ export async function hfFetch(
   }
 
   return response;
+}
+
+/** Ekstrak teks pesan error yang aman dari tipe error apapun (Error, ApiError, string, dll). */
+export function extractErrorMessage(err: unknown, fallback: string = 'Terjadi kesalahan sistem'): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    if ('message' in err && typeof err.message === 'string' && err.message.length > 0) {
+      return err.message;
+    }
+    if ('error' in err && typeof err.error === 'string' && err.error.length > 0) {
+      return err.error;
+    }
+  }
+  if (typeof err === 'string' && err.trim().length > 0) return err;
+  return fallback;
 }

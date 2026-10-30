@@ -89,6 +89,17 @@ const EXT_MEDIA_RECORD: Record<string, true> = {
   mp3: true, wav: true, flac: true, m4a: true, aac: true,
 };
 
+/** Ekstensi video: diputar via elemen <video> (thumbnail poster frame). */
+const EXT_VIDEO_RECORD: Record<string, true> = {
+  mp4: true, webm: true, mov: true, ogg: true, ogv: true,
+  mkv: true, avi: true, m4v: true,
+};
+
+/** Ekstensi audio: diputar via elemen <audio>. */
+const EXT_AUDIO_RECORD: Record<string, true> = {
+  mp3: true, wav: true, flac: true, m4a: true, aac: true,
+};
+
 const EXT_SPREADSHEET_RECORD: Record<string, true> = {
   xlsx: true, xls: true, ods: true,
 };
@@ -117,8 +128,28 @@ export function detectViewerCategory(fileName: string): ViewerCategory {
 
   if (EXT_IMAGE_RECORD[ext]) return 'image';
   if (EXT_MEDIA_RECORD[ext]) return 'media';
+  if (EXT_VIDEO_RECORD[ext]) return 'media';
+  if (EXT_AUDIO_RECORD[ext]) return 'media';
   if (EXT_SPREADSHEET_RECORD[ext]) return 'spreadsheet';
   if (EXT_CODE_RECORD[ext]) return 'code';
 
   return 'info';
+}
+
+// ── Akses Sekali-Sumber untuk Ekstensi Media (dipakai lintas viewers) ──────
+
+/** Ekstensi file (huruf kecil) — tanpa titik; '' bila tidak ada. */
+export function extensionOf(fileName: string): string {
+  const parts = fileName.toLowerCase().split('.');
+  return parts.length > 1 ? (parts.pop() ?? '') : '';
+}
+
+/** Ekstensi termasuk kelompok gambar (dapat thumbnail + viewer image). */
+export function isImageExtension(ext: string): boolean {
+  return EXT_IMAGE_RECORD[ext] !== undefined;
+}
+
+/** Ekstensi termasuk kelompok video utama (dapat viewer <video> + poster frame). */
+export function isVideoExtension(ext: string): boolean {
+  return EXT_VIDEO_RECORD[ext] !== undefined;
 }

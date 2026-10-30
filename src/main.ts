@@ -27,6 +27,9 @@ import { renderCommitHistoryPage } from './ui/pages/commit-history';
 import type { Route } from './router/router';
 import type { RepoType } from './api/types';
 
+/** Debounce global dialog sesi kadaluwarsa (module scope — tak reset ulang bila boot dipanggil lagi). */
+let _authExpiredDebounce = 0;
+
 // ── Routing ────────────────────────────────────────────────────────────────
 
 /** Sanitasi string sebelum dimasukkan ke innerHTML. */
@@ -107,6 +110,12 @@ function handleRoute(route: Route): void {
       renderNotFoundPage(container);
     }
   }
+
+  // Lapisan hidup: konten halaman baru masuk dengan entrance halus.
+  const pageRoot = container.firstElementChild;
+  if (pageRoot instanceof HTMLElement) {
+    pageRoot.classList.add('hs-page-in');
+  }
 }
 
 // ── Boot sequence ──────────────────────────────────────────────────────────
@@ -138,7 +147,6 @@ async function boot(): Promise<void> {
   });
   // 6. Tangani token kedaluwarsa secara terpusat: hapus sesi bila token expired (HTTP 401)
   // Menampilkan notifikasi re-login tanpa menghapus data perubahan tertunda (pendingChanges)
-  let _authExpiredDebounce = 0;
   window.addEventListener('auth:expired', () => {
     const now = Date.now();
     if (now - _authExpiredDebounce < 1500) return;

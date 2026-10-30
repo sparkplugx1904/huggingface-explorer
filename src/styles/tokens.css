@@ -97,7 +97,8 @@
   --space-10: 2.5rem;
 
   /* ── 9. RADIUS (anti-pill; penuh hanya titik/avatar) ─────── */
-  --radius-sm:  4px;      /* badge, tag                          */
+  --radius-sm:  4px;      /* badge, tag, input kecil             */
+  --radius-md:  6px;      /* tombol sm, input, konten inline     */
   --radius:     6px;      /* tombol, input, item menu            */
   --radius-lg:  8px;      /* tombol lg, menu                     */
   --radius-xl:  10px;     /* kartu, panel, modal                 */
@@ -113,8 +114,11 @@
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 260ms;
+  --dur-slower: 420ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --stagger-step: 45ms;
 
   /* ── 12. LAYOUT ──────────────────────────────────────────── */
   --header-h: 48px;         /* slim dev-tool header            */

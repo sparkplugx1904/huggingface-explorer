@@ -105,6 +105,34 @@ export interface RestoreFileParams {
   onProgress?: (status: string) => void;
 }
 
+/**
+ * Jalankan tugas asinkron secara overlapped (maks `size` paralel sekaligus).
+ * Hasil tetap terurut sesuai indeks item. Menghindari 50 request serial
+ * (worst case ~500 s) tanpa membanjiri jaringan dengan Promise.all penuh.
+ */
+async function mapWindowed<T, R>(
+  items: T[],
+  size: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.max(1, Math.min(size, items.length));
+  const workers: Promise<void>[] = [];
+  for (let w = 0; w < workerCount; w++) {
+    workers.push(
+      (async () => {
+        while (nextIndex < items.length) {
+          const i = nextIndex++;
+          results[i] = await fn(items[i], i);
+        }
+      })()
+    );
+  }
+  await Promise.all(workers);
+  return results;
+}
+
 // ── 1. Mengambil Riwayat Commit ───────────────────────────────────────────
 
 /**
@@ -141,26 +169,22 @@ export async function fetchCommitHistory(
   // Jika memfilter berdasarkan path berkas tertentu, kita bisa menyaringnya
   if (path) {
     const normalizedTarget = path.replace(/^\/+/, '');
-    // Kita filter dengan memeriksa diff dari commit-commit tersebut secara bertahap
-    const filteredCommits: CommitItem[] = [];
-    for (let i = 0; i < commits.length; i++) {
-      const commitItem = commits[i];
+    // Cek diff paralel berjendela (6 sekaligus) — commit dengan diff gagal
+    // tetap disertakan agar kehati-hatian. Hasil dipetakan per indeks asli.
+    const touchedByFile = await mapWindowed(commits, 6, async (commitItem, i) => {
       // Parent commit = item berikutnya dalam urutan riwayat (baris baru → lama)
       const parentSha = i + 1 < commits.length ? commits[i + 1].oid : null;
       try {
         const diff = await fetchCommitDiff(repoType, repoId, commitItem.oid, token, parentSha);
-        const touchesFile = diff.files.some(
+        return diff.files.some(
           (f) => f.path === normalizedTarget || f.oldPath === normalizedTarget
         );
-        if (touchesFile) {
-          filteredCommits.push(commitItem);
-        }
       } catch {
         // Jika diff gagal diambil, tetap sertakan commit untuk kehati-hatian
-        filteredCommits.push(commitItem);
+        return true;
       }
-    }
-    return filteredCommits;
+    });
+    return commits.filter((_, i) => touchedByFile[i]);
   }
 
   return commits;
@@ -310,7 +334,10 @@ export async function fetchCommitDiff(
   token?: string | null,
   parentSha?: string | null
 ): Promise<CommitDiffResult> {
-  const parent = parentSha ?? (await getParentCommitSha(repoType, repoId, commitSha, token));
+  // undefined = pemanggil belum resolve (silakan cari parent);
+  // string kosong/null eksplisit sudah diketahui → commit root, tanpa resolve ulang
+  // (menghindari dobel getParentCommitSha pada commit yang sama).
+  const parent = parentSha === undefined ? await getParentCommitSha(repoType, repoId, commitSha, token) : parentSha;
   if (!parent) {
     // Commit root (commit pertama repositori) tidak dapat di-compare.
     return { commitSha, rawDiff: '', files: [], totalAdditions: 0, totalDeletions: 0 };
@@ -597,36 +624,40 @@ export async function getRecentlyDeletedFiles(
     // Abaikan error pengecekan HEAD jika terjadi masalah network
   }
 
-  // Telusuri commit dari yang terbaru ke yang terlama
-  for (let i = 0; i < commits.length; i++) {
-    const currentCommit = commits[i];
+  // Telusuri diff commit paralel berjendela (6 sekaligus), lalu masukkan
+  // hasilnya secara SEQUENTIAL sesuai urutan commit (terbaru dulu) supaya
+  // semantik "penghapusan terbaru menang" tetap dipertahankan.
+  const perCommitDeletions = await mapWindowed(commits, 6, async (commitItem, i) => {
     let parentCommitSha = i + 1 < commits.length ? commits[i + 1].oid : '';
     if (!parentCommitSha) {
-      parentCommitSha = (await getParentCommitSha(repoType, repoId, currentCommit.oid, token)) || '';
+      parentCommitSha = (await getParentCommitSha(repoType, repoId, commitItem.oid, token)) || '';
     }
     try {
-      const diff = await fetchCommitDiff(repoType, repoId, currentCommit.oid, token, parentCommitSha || null);
-      for (const file of diff.files) {
-        if (file.type === 'deleted') {
-          // Hanya masukkan jika belum ada di map (ambil kejadian penghapusan yang paling baru)
-          // dan tidak sedang aktif ada di HEAD
-          if (!deletedFilesMap.has(file.path) && !activeExistingFiles.has(file.path)) {
-            const fileName = file.path.split('/').pop() || file.path;
-            deletedFilesMap.set(file.path, {
-              path: file.path,
-              name: fileName,
-              deletedInCommitSha: currentCommit.oid,
-              deletedInCommitTitle: currentCommit.title,
-              deletedDate: currentCommit.date,
-              parentCommitSha,
-              author: currentCommit.authors[0],
-            });
-          }
-        }
-      }
+      const diff = await fetchCommitDiff(repoType, repoId, commitItem.oid, token, parentCommitSha);
+      const deletedPaths = diff.files.filter((f) => f.type === 'deleted').map((f) => f.path);
+      return { commit: commitItem, parentSha: parentCommitSha, deletedPaths };
     } catch {
       // Lanjutkan ke commit berikutnya jika satu diff gagal diambil
-      continue;
+      return { commit: commitItem, parentSha: parentCommitSha, deletedPaths: [] as string[] };
+    }
+  });
+
+  for (const { commit: currentCommit, parentSha, deletedPaths } of perCommitDeletions) {
+    for (const filePath of deletedPaths) {
+      // Hanya masukkan jika belum ada di map (ambil kejadian penghapusan yang paling baru)
+      // dan tidak sedang aktif ada di HEAD
+      if (!deletedFilesMap.has(filePath) && !activeExistingFiles.has(filePath)) {
+        const fileName = filePath.split('/').pop() || filePath;
+        deletedFilesMap.set(filePath, {
+          path: filePath,
+          name: fileName,
+          deletedInCommitSha: currentCommit.oid,
+          deletedInCommitTitle: currentCommit.title,
+          deletedDate: currentCommit.date,
+          parentCommitSha: parentSha,
+          author: currentCommit.authors[0],
+        });
+      }
     }
   }
 

@@ -28,6 +28,9 @@ export const MEDIA_VAULT_TTL_MS = 8 * 60 * 60 * 1000;
 /** Anggaran total ruang disk yang boleh dipakai vault: 512 MB (LRU). */
 export const MEDIA_VAULT_BUDGET_BYTES = 512 * 1024 * 1024;
 
+/** Ukuran maksimal satu berkas yang layak diunduh utuh ke vault: 48 MB. */
+export const MEDIA_VAULT_MAX_CACHEABLE_BYTES = 48 * 1024 * 1024;
+
 const DB_NAME = 'huggingstudio-media-vault';
 const DB_VERSION = 1;
 const STORE = 'entries';
@@ -80,7 +83,10 @@ async function withVaultStore<T>(
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(STORE, mode);
     const req = fn(tx.objectStore(STORE));
-    tx.oncomplete = () => resolve(req.result as T);
+    // Resolve lewat req.onsuccess — req.result dipedom di sisi browser bisa
+    // terlambat/undefined di beberapa engine bila dibaca pada tx.oncomplete.
+    req.onsuccess = () => resolve(req.result as T);
+    req.onerror = () => reject(req.error ?? tx.error ?? new Error('Media Vault gagal'));
     tx.onerror = () => reject(tx.error ?? new Error('Media Vault gagal'));
     tx.onabort = () => reject(tx.error ?? new Error('Media Vault dibatalkan'));
   });

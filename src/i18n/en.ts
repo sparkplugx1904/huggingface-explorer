@@ -45,6 +45,10 @@ export const en: Translations = {
   },
   nav: {
     home: 'Home',
+    datasetsLoading: 'Loading datasets…',
+    datasetsEmpty: 'No datasets yet',
+    modelsLoading: 'Loading models…',
+    modelsEmpty: 'No models yet',
     back: 'Back',
     settings: 'Settings',
     theme: 'Theme',
@@ -362,5 +366,24 @@ export const en: Translations = {
   footer: {
     disclaimer:
       'HuggingStudio is not an official Hugging Face product. Built for exploration purposes.',
+  },
+  hero: {
+    brand: 'Hugging Face',
+    badge: 'Guest access available for public repos',
+    titlePrefix: 'File manager for',
+    subtitle:
+      'Browse repos like Google Drive, commit like GitHub Desktop — straight from your browser, no install, no intermediary server.',
+    wordModel: 'Models',
+    wordDataset: 'Datasets',
+    wordSpace: 'Spaces',
+    feat1Title: 'Your own repos',
+    feat1Desc:
+      'Sign in to view and manage all Models, Datasets, and Spaces from your account or organizations.',
+    feat2Title: 'Editor right in the browser',
+    feat2Desc: 'Upload, download, move, and rename files — all bundled into a single combined commit.',
+    feat3Title: 'Private & protected',
+    feat3Desc: 'OAuth PKCE tokens live only in browser memory — never touching third-party servers.',
+    feat4Title: 'Instant thumbnails',
+    feat4Desc: 'Images and videos render as mini previews directly in the browser, no server needed.',
   },
 };

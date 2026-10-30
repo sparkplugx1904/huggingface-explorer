@@ -10,7 +10,7 @@ import type { RepoType } from '../../api/types';
 import type { FileEntry } from '../../api/tree';
 import { downloadFileBlob } from '../../api/tree';
 import { getFromMediaVault, putToMediaVault, mediaVaultKey } from '../../api/media-cache';
-import { MAX_THUMBNAIL_SIZE, MAX_VIDEO_THUMBNAIL_SIZE } from './types';
+import { MAX_THUMBNAIL_SIZE, MAX_VIDEO_THUMBNAIL_SIZE, isImageExtension, isVideoExtension } from './types';
 
 type ThumbKind = 'image' | 'video';
 
@@ -226,6 +226,20 @@ async function generateThumbnail(task: ThumbnailTask): Promise<void> {
 
 let observer: IntersectionObserver | null = null;
 
+/**
+ * Putuskan semua observasi thumbnail lama. WAJIB dipanggil saat halaman
+ * file-manager dirender ulang (navigasi SPA) — observer module-level yang
+ * tidak pernah di-disconnect menahan referensi elemen DOM yang sudah
+ * dibuang → memory leak nyata saat pindah folder repositori.
+ */
+export function resetThumbnailObserver(): void {
+  observer?.disconnect();
+  observer = null;
+  // Antrean sisa kartu halaman lama tidak lagi relevan — worker jangan
+  // melanjutkan unduhan untuk elemen DOM yang sudah dibuang (kuota & thread).
+  taskQueue.length = 0;
+}
+
 function getObserver(): IntersectionObserver {
   if (!observer) {
     observer = new IntersectionObserver(
@@ -253,8 +267,6 @@ function getObserver(): IntersectionObserver {
 
 // ── Registrasi Kartu ──────────────────────────────────────────────────────
 
-const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg']);
-const VIDEO_EXT = new Set(['mp4', 'webm', 'm4v', 'mov', 'mkv', 'avi']);
 
 /**
  * Daftarkan kartu berkas gambar/video ke sistem lazy thumbnail.
@@ -270,11 +282,13 @@ export function registerLazyThumbnail(
   revision: string,
   token?: string | null
 ): void {
+  // Satu sumber kebenaran ekstensi (types.ts) — .avif/.ico ikut dapat thumbnail,
+  // video .mov/.mkv/.avi/.ogv konsisten dengan pilihan viewer.
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   let kind: ThumbKind | null = null;
-  if (IMAGE_EXT.has(ext)) {
+  if (isImageExtension(ext)) {
     kind = 'image';
-  } else if (VIDEO_EXT.has(ext)) {
+  } else if (isVideoExtension(ext)) {
     kind = 'video';
   }
   if (!kind || file.size <= 0) return;

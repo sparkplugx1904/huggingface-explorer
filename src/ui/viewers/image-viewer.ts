@@ -53,10 +53,19 @@ export async function renderImageViewer(
   const isSvg = file.name.toLowerCase().endsWith('.svg');
   let finalBlob: Blob = blob;
 
-  // Deteksi kontainer HEIC/HEIF dari magic bytes ftypheic/ftypmif1
-  const slice = await blob.slice(0, 32).arrayBuffer();
+  // Deteksi kontainer HEIC/HEIF berbasis ISOBMFF: brand ada setelah 4-byte box size
+  // (offset 4), dan kompatibilitas brand bisa tersimpan setelah 4-byte minor version
+  // (offset 8+). Jadi cari 'ftyp' lalu cocokkan brand beserta varian turunannya.
+  const slice = await blob.slice(0, 64).arrayBuffer();
   const magic = String.fromCharCode(...new Uint8Array(slice));
-  const isHeic = magic.includes('ftypheic') || magic.includes('ftypmif1') || magic.includes('ftypmsf1') || magic.includes('ftypheix') || magic.includes('ftyphevc');
+  const isHeic =
+    magic.includes('ftyp') &&
+    (magic.includes('heic') ||
+      magic.includes('heix') ||
+      magic.includes('hevc') ||
+      magic.includes('mif1') ||
+      magic.includes('msf1') ||
+      magic.includes('miaf'));
 
   if (isHeic) {
     try {

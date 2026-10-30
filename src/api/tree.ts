@@ -364,11 +364,12 @@ export async function downloadFileBlob(
   filePath: string,
   revision: string = 'main',
   token?: string | null,
-  endpoint: 'raw' | 'resolve' = 'resolve'
+  endpoint: 'raw' | 'resolve' = 'resolve',
+  signal?: AbortSignal
 ): Promise<Blob> {
   // Default 'resolve' untuk memastikan file LFS dan binary diunduh konten aslinya, bukan pointer text
   const url = buildHfRawUrl(repoType, repoId, filePath, revision, endpoint);
-  const response = await hfFetch(url, { token });
+  const response = await hfFetch(url, { token, signal });
   if (!response.ok) {
     throw new Error(`Gagal mengunduh berkas ${filePath}: HTTP ${response.status}`);
   }
