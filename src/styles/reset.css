@@ -1,0 +1,225 @@
+/* ============================================================
+   Reset Modern — HuggingStudio
+   Basis bersih sebelum style diterapkan.
+   ============================================================ */
+
+/* --- Box-sizing universal --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- Root & Body --- */
+html {
+  /* Gulir halus, hormati preferensi reduced-motion */
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  font-family: var(--hs-font-body);
+  font-size: var(--hs-text-base);
+  line-height: 1.6;
+  color: var(--hs-text);
+  background-color: var(--hs-canvas);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Elemen media --- */
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
+/* --- Tipografi --- */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--hs-text);
+}
+
+p {
+  line-height: 1.7;
+}
+
+/* Tautan standar */
+a {
+  color: var(--hs-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--hs-accent-hover);
+}
+
+/* --- Elemen form --- */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Hilangkan panah bawaan select di beberapa browser */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Textarea tidak bisa diresize horizontal */
+textarea {
+  resize: vertical;
+}
+
+/* --- Daftar --- */
+ul,
+ol {
+  list-style: none;
+}
+
+/* --- Tabel --- */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* --- HR --- */
+hr {
+  border: none;
+  border-top: 1px solid var(--hs-border);
+  margin-block: var(--hs-space-4);
+}
+
+/* --- Kode --- */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--hs-font-mono);
+  font-size: 0.9em;
+}
+
+/* --- Focus-visible global --- */
+/* Sembunyikan outline untuk klik/tap, tampilkan untuk keyboard */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--hs-accent);
+  outline-offset: 2px;
+  border-radius: var(--hs-radius-sm);
+}
+
+/* --- Seleksi teks --- */
+::selection {
+  background-color: var(--hs-accent-focus);
+  color: var(--hs-text);
+}
+
+::-moz-selection {
+  background-color: var(--hs-accent-focus);
+  color: var(--hs-text);
+}
+
+/* --- Scrollbar kustom (WebKit) --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--hs-border-strong);
+  border-radius: var(--hs-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hs-text-muted);
+}
+
+/* --- Placeholder --- */
+::placeholder {
+  color: var(--hs-text-subtle);
+  opacity: 1;
+}
+
+/* --- Dialog --- */
+dialog {
+  padding: 0;
+  border: none;
+  border-radius: var(--hs-radius-lg);
+  background: var(--hs-surface);
+  color: var(--hs-text);
+  box-shadow: var(--hs-shadow-lg);
+  max-width: min(90vw, 32rem);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(2px);
+}
+
+/* --- Details & Summary --- */
+details > summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* --- Fieldset --- */
+fieldset {
+  border: 1px solid var(--hs-border);
+  border-radius: var(--hs-radius);
+  padding: var(--hs-space-4);
+}
+
+legend {
+  padding-inline: var(--hs-space-2);
+  font-weight: 500;
+  font-size: var(--hs-text-sm);
+}

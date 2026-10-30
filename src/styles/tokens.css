@@ -1,0 +1,232 @@
+/* ============================================================
+   Design Tokens — HuggingStudio
+   Modern developer tool design tokens.
+   Light: Crisp slate & white with amber accents.
+   Dark: Deep obsidian (#090d16) canvas with crisp 1px borders.
+   ============================================================ */
+
+:root {
+  /* --- Brand Accents (Amber) --- */
+  --hs-amber-500:      #f59e0b;
+  --hs-amber-400:      #fbbf24;
+  --hs-accent:         var(--hs-amber-500);
+  --hs-accent-hover:   #d97706;
+  --hs-accent-light:   #fef3c7;
+  --hs-accent-subtle:  rgba(245, 158, 11, 0.12);
+  --hs-accent-focus:   rgba(245, 158, 11, 0.25);
+
+  /* Legacy brand aliases for backward compatibility */
+  --hs-yellow:         #f59e0b;
+  --hs-orange:         #f59e0b;
+
+  /* --- Surfaces (Light mode default) --- */
+  --hs-canvas:         #f8fafc;   /* Page canvas background */
+  --hs-surface:        #ffffff;   /* Card, dialog, header background */
+  --hs-surface-hover:  #f1f5f9;   /* Hover state */
+  --hs-surface-2:      #f1f5f9;   /* Secondary surface (canvas/inputs) */
+  --hs-surface-3:      #e2e8f0;   /* Tertiary surface */
+  --hs-border:         #e2e8f0;   /* Crisp 1px borders */
+  --hs-border-strong:  #cbd5e1;   /* Focused/elevated borders */
+
+  /* --- Typography Colors (Light) --- */
+  --hs-text:           #0f172a;   /* Slate 900 primary text */
+  --hs-text-muted:     #64748b;   /* Slate 500 secondary text */
+  --hs-text-subtle:    #94a3b8;   /* Slate 400 placeholder/caption */
+  --hs-text-inverse:   #ffffff;
+
+  /* --- Semantic Colors --- */
+  --hs-error:          #ef4444;
+  --hs-error-bg:       #fef2f2;
+  --hs-error-border:   #fecaca;
+  --hs-success:        #10b981;
+  --hs-success-bg:     #ecfdf5;
+  --hs-success-border: #a7f3d0;
+  --hs-warning:        #f59e0b;
+  --hs-warning-bg:     #fffbeb;
+  --hs-warning-border: #fde68a;
+
+  /* --- Repo Type Badges (Sky, Emerald, Violet, Slate) --- */
+  --hs-color-model:       #0284c7;  /* Sky 600 */
+  --hs-color-model-bg:    #f0f9ff;  /* Sky 50 */
+  --hs-color-model-border:#bae6fd;  /* Sky 200 */
+
+  --hs-color-dataset:       #059669;  /* Emerald 600 */
+  --hs-color-dataset-bg:    #ecfdf5;  /* Emerald 50 */
+  --hs-color-dataset-border:#a7f3d0;  /* Emerald 200 */
+
+  --hs-color-space:       #7c3aed;  /* Violet 600 */
+  --hs-color-space-bg:    #f5f3ff;  /* Violet 50 */
+  --hs-color-space-border:#ddd6fe;  /* Violet 200 */
+
+  --hs-color-private:       #475569;  /* Slate 600 */
+  --hs-color-private-bg:    #f8fafc;  /* Slate 50 */
+  --hs-color-private-border:#e2e8f0;  /* Slate 200 */
+
+  /* --- Spacing (4px scale) --- */
+  --hs-space-1:  0.25rem;   /* 4px  */
+  --hs-space-2:  0.5rem;    /* 8px  */
+  --hs-space-3:  0.75rem;   /* 12px */
+  --hs-space-4:  1rem;      /* 16px */
+  --hs-space-5:  1.25rem;   /* 20px */
+  --hs-space-6:  1.5rem;    /* 24px */
+  --hs-space-7:  1.75rem;   /* 28px */
+  --hs-space-8:  2rem;      /* 32px */
+  --hs-space-9:  2.25rem;   /* 36px */
+  --hs-space-10: 2.5rem;    /* 40px */
+
+  /* --- Modern Developer Tool Radius (NO 9999px for buttons!) --- */
+  --hs-radius-sm:    4px;   /* badges, compact tags */
+  --hs-radius:       6px;   /* buttons, inputs, dropdown items */
+  --hs-radius-lg:    8px;   /* large buttons, secondary cards */
+  --hs-radius-card:  10px;  /* cards & panels */
+  --hs-radius-modal: 10px;  /* modals & dialogs */
+  --hs-radius-xl:    10px;  /* standardized 10px for cards & modals */
+  --hs-radius-full:  9999px; /* ONLY for circular avatars and status dots */
+  /* --- Elevation / Shadows --- */
+  --hs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --hs-shadow:    0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --hs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+
+  /* --- Typography --- */
+  --hs-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --hs-font-mono: ui-monospace, "Cascadia Code", "Fira Code", "JetBrains Mono", SFMono-Regular, monospace;
+
+  --hs-text-xs:   0.75rem;
+  --hs-text-sm:   0.875rem;
+  --hs-text-base: 1rem;
+  --hs-text-lg:   1.125rem;
+  --hs-text-xl:   1.25rem;
+  --hs-text-2xl:  1.5rem;
+
+  /* --- Transitions --- */
+  --hs-transition-fast: 120ms ease;
+  --hs-transition:      200ms ease;
+  --hs-transition-slow: 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  --hs-ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* --- Z-index Layers --- */
+  --hs-z-dropdown: 100;
+  --hs-z-overlay:  200;
+  --hs-z-modal:    300;
+  --hs-z-toast:    400;
+
+  /* --- Layout Dimensions --- */
+  --hs-header-h:         52px;
+  --hs-sidebar-w:        240px;
+  --hs-sidebar-mobile-w: 280px;
+}
+
+/* ==============================================
+   Dark Mode — Deep Obsidian Canvas (#090d16)
+   Crisp 1px borders, subtle amber accents.
+   ============================================== */
+[data-theme="dark"] {
+  /* --- Brand Accents (Dark) --- */
+  --hs-accent:         #f59e0b;
+  --hs-accent-hover:   #fbbf24;
+  --hs-accent-light:   rgba(245, 158, 11, 0.2);
+  --hs-accent-subtle:  rgba(245, 158, 11, 0.15);
+  --hs-accent-focus:   rgba(245, 158, 11, 0.3);
+  /* --- Surfaces (Dark) --- */
+  --hs-canvas:         #090d16;   /* Deep obsidian background */
+  --hs-surface:        #0f172a;   /* Card, header, dialog surface */
+  --hs-surface-hover:  #1e293b;   /* Hover highlight */
+  --hs-surface-2:      #0d1322;   /* Secondary surface */
+  --hs-surface-3:      #1e293b;   /* Tertiary surface */
+  --hs-border:         rgba(255, 255, 255, 0.08); /* Crisp subtle border */
+  --hs-border-strong:  #1e293b;
+
+  /* --- Typography Colors (Dark) --- */
+  --hs-text:           #f8fafc;   /* Slate 50 bright text */
+  --hs-text-muted:     #94a3b8;   /* Slate 400 muted text */
+  --hs-text-subtle:    #64748b;   /* Slate 500 caption text */
+  --hs-text-inverse:   #090d16;
+
+  /* --- Semantic Colors (Dark) --- */
+  --hs-error:          #f87171;
+  --hs-error-bg:       rgba(239, 68, 68, 0.12);
+  --hs-error-border:   rgba(239, 68, 68, 0.25);
+  --hs-success:        #34d399;
+  --hs-success-bg:     rgba(16, 185, 129, 0.12);
+  --hs-success-border: rgba(16, 185, 129, 0.25);
+  --hs-warning:        #fbbf24;
+  --hs-warning-bg:     rgba(245, 158, 11, 0.12);
+  --hs-warning-border: rgba(245, 158, 11, 0.25);
+
+  /* --- Repo Type Badges (Dark Mode: Elegant Translucent) --- */
+  --hs-color-model:       #38bdf8;  /* Sky 400 */
+  --hs-color-model-bg:    rgba(56, 189, 248, 0.12);
+  --hs-color-model-border:rgba(56, 189, 248, 0.28);
+
+  --hs-color-dataset:       #34d399;  /* Emerald 400 */
+  --hs-color-dataset-bg:    rgba(52, 211, 153, 0.12);
+  --hs-color-dataset-border:rgba(52, 211, 153, 0.28);
+
+  --hs-color-space:       #a78bfa;  /* Violet 400 */
+  --hs-color-space-bg:    rgba(167, 139, 250, 0.12);
+  --hs-color-space-border:rgba(167, 139, 250, 0.28);
+
+  --hs-color-private:       #94a3b8;  /* Slate 400 */
+  --hs-color-private-bg:    rgba(148, 163, 184, 0.12);
+  --hs-color-private-border:rgba(148, 163, 184, 0.28);
+
+  /* --- Shadows (Dark) --- */
+  --hs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --hs-shadow:    0 1px 3px 0 rgb(0 0 0 / 0.6), 0 1px 2px -1px rgb(0 0 0 / 0.5);
+  --hs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -4px rgb(0 0 0 / 0.6);
+}
+
+/* ==============================================
+   Dark mode — System Media Query Fallback
+   ============================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --hs-accent:         #f59e0b;
+    --hs-accent-hover:   #fbbf24;
+    --hs-accent-light:   rgba(245, 158, 11, 0.2);
+    --hs-accent-subtle:  rgba(245, 158, 11, 0.15);
+    --hs-accent-focus:   rgba(245, 158, 11, 0.3);
+    --hs-canvas:         #090d16;
+    --hs-surface:        #0f172a;
+    --hs-surface-hover:  #1e293b;
+    --hs-surface-2:      #0d1322;
+    --hs-surface-3:      #1e293b;
+    --hs-border:         rgba(255, 255, 255, 0.08);
+    --hs-border-strong:  #1e293b;
+
+    --hs-text:           #f8fafc;
+    --hs-text-muted:     #94a3b8;
+    --hs-text-subtle:    #64748b;
+    --hs-text-inverse:   #090d16;
+
+    --hs-error:          #f87171;
+    --hs-error-bg:       rgba(239, 68, 68, 0.12);
+    --hs-error-border:   rgba(239, 68, 68, 0.25);
+    --hs-success:        #34d399;
+    --hs-success-bg:     rgba(16, 185, 129, 0.12);
+    --hs-success-border: rgba(16, 185, 129, 0.25);
+    --hs-warning:        #fbbf24;
+    --hs-warning-bg:     rgba(245, 158, 11, 0.12);
+    --hs-warning-border: rgba(245, 158, 11, 0.25);
+
+    --hs-color-model:       #38bdf8;
+    --hs-color-model-bg:    rgba(56, 189, 248, 0.12);
+    --hs-color-model-border:rgba(56, 189, 248, 0.28);
+
+    --hs-color-dataset:       #34d399;
+    --hs-color-dataset-bg:    rgba(52, 211, 153, 0.12);
+    --hs-color-dataset-border:rgba(52, 211, 153, 0.28);
+
+    --hs-color-space:       #a78bfa;
+    --hs-color-space-bg:    rgba(167, 139, 250, 0.12);
+    --hs-color-space-border:rgba(167, 139, 250, 0.28);
+
+    --hs-color-private:       #94a3b8;
+    --hs-color-private-bg:    rgba(148, 163, 184, 0.12);
+    --hs-color-private-border:rgba(148, 163, 184, 0.28);
+
+    --hs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+    --hs-shadow:    0 1px 3px 0 rgb(0 0 0 / 0.6), 0 1px 2px -1px rgb(0 0 0 / 0.5);
+    --hs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -4px rgb(0 0 0 / 0.6);
+  }
+}
