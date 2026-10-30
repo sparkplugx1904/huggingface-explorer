@@ -143,9 +143,12 @@ export async function fetchCommitHistory(
     const normalizedTarget = path.replace(/^\/+/, '');
     // Kita filter dengan memeriksa diff dari commit-commit tersebut secara bertahap
     const filteredCommits: CommitItem[] = [];
-    for (const commitItem of commits) {
+    for (let i = 0; i < commits.length; i++) {
+      const commitItem = commits[i];
+      // Parent commit = item berikutnya dalam urutan riwayat (baris baru → lama)
+      const parentSha = i + 1 < commits.length ? commits[i + 1].oid : null;
       try {
-        const diff = await fetchCommitDiff(repoType, repoId, commitItem.oid, token);
+        const diff = await fetchCommitDiff(repoType, repoId, commitItem.oid, token, parentSha);
         const touchesFile = diff.files.some(
           (f) => f.path === normalizedTarget || f.oldPath === normalizedTarget
         );
@@ -195,19 +198,13 @@ export async function getParentCommitSha(
 // ── 2. Mengambil & Mem-parse Git Diff Commit ───────────────────────────────
 
 /**
- * Menyusun URL endpoint diff Hugging Face sesuai tipe repositori:
- * - Model:   /{repoId}/commit/{sha}.diff
- * - Dataset: /datasets/{repoId}/commit/{sha}.diff
- * - Space:   /spaces/{repoId}/commit/{sha}.diff
+ * Menyusun endpoint API compare Hugging Face (rute /api/* — CORS diizinkan):
+ * /api/{models|datasets|spaces}/{repoId}/compare/{parent}..{sha}
+ * Rute lama /{repoId}/commit/{sha}.diff adalah halaman HTML hub tanpa header
+ * Access-Control-Allow-Origin sehingga selalu diblokir oleh CORS di browser.
  */
-function getDiffUrl(repoType: RepoType, repoId: string, commitSha: string): string {
-  if (repoType === 'dataset') {
-    return `/datasets/${repoId}/commit/${commitSha}.diff`;
-  }
-  if (repoType === 'space') {
-    return `/spaces/${repoId}/commit/${commitSha}.diff`;
-  }
-  return `/${repoId}/commit/${commitSha}.diff`;
+function getDiffUrl(repoType: RepoType, repoId: string, commitSha: string, parentSha: string): string {
+  return `/api/${repoType}s/${repoId}/compare/${parentSha}..${commitSha}`;
 }
 
 /**
@@ -302,14 +299,24 @@ export function parseGitDiff(rawDiff: string, commitSha: string): CommitDiffResu
 
 /**
  * Mengambil diff dari sebuah commit tertentu dan mem-parse berkas-berkas yang berubah.
+ * Endpoint compare membutuhkan SHA parent commit; apabila pemanggil tidak menyediakannya,
+ * parent dicari lewat API commits (limit 2) lalu dipakai untuk compare.
+ * Commit awal (root) tanpa parent mengembalikan hasil kosong.
  */
 export async function fetchCommitDiff(
   repoType: RepoType,
   repoId: string,
   commitSha: string,
-  token?: string | null
+  token?: string | null,
+  parentSha?: string | null
 ): Promise<CommitDiffResult> {
-  const url = getDiffUrl(repoType, repoId, commitSha);
+  const parent = parentSha ?? (await getParentCommitSha(repoType, repoId, commitSha, token));
+  if (!parent) {
+    // Commit root (commit pertama repositori) tidak dapat di-compare.
+    return { commitSha, rawDiff: '', files: [], totalAdditions: 0, totalDeletions: 0 };
+  }
+
+  const url = getDiffUrl(repoType, repoId, commitSha, parent);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
@@ -344,13 +351,6 @@ export async function revertCommit(
     throw new Error('Token otentikasi diperlukan untuk melakukan revert commit.');
   }
 
-  onProgress?.('Membaca perubahan commit yang akan di-revert…');
-  const diffResult = await fetchCommitDiff(repoType, repoId, commitSha, token);
-
-  if (diffResult.files.length === 0) {
-    throw new Error('Tidak ada berkas yang dapat di-revert pada commit ini.');
-  }
-
   onProgress?.('Mencari parent commit…');
   // Ambil commit list untuk mencari parent commit
   const commits = await fetchCommitHistory({
@@ -362,7 +362,7 @@ export async function revertCommit(
   });
 
   const commitIndex = commits.findIndex((c) => c.oid === commitSha);
-  let parentSha: string | null = null;
+  let parentSha: string | null;
   if (commitIndex >= 0 && commitIndex + 1 < commits.length) {
     parentSha = commits[commitIndex + 1].oid;
   } else {
@@ -375,6 +375,13 @@ export async function revertCommit(
     throw new Error(
       `Tidak dapat me-revert commit ${commitSha.slice(0, 7)}: commit ini merupakan commit awal (root) atau tidak memiliki parent commit.`
     );
+  }
+
+  onProgress?.('Membaca perubahan commit yang akan di-revert…');
+  const diffResult = await fetchCommitDiff(repoType, repoId, commitSha, token, parentSha);
+
+  if (diffResult.files.length === 0) {
+    throw new Error('Tidak ada berkas yang dapat di-revert pada commit ini.');
   }
 
   onProgress?.('Mempersiapkan operasi pembalikan berkas…');
@@ -598,7 +605,7 @@ export async function getRecentlyDeletedFiles(
       parentCommitSha = (await getParentCommitSha(repoType, repoId, currentCommit.oid, token)) || '';
     }
     try {
-      const diff = await fetchCommitDiff(repoType, repoId, currentCommit.oid, token);
+      const diff = await fetchCommitDiff(repoType, repoId, currentCommit.oid, token, parentCommitSha || null);
       for (const file of diff.files) {
         if (file.type === 'deleted') {
           // Hanya masukkan jika belum ada di map (ambil kejadian penghapusan yang paling baru)

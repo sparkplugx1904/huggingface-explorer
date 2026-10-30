@@ -7,6 +7,7 @@
 import type { ViewerContext } from './types';
 import { renderInfoCard } from './info-card';
 import { resolvePrivateFileUrl, triggerFileDownload } from '../../api/tree';
+import { getFromMediaVault, mediaVaultKey } from '../../api/media-cache';
 import { showToast } from '../components/toast';
 import { iconDownload, iconAlertCircle } from '../components/icons';
 
@@ -38,11 +39,29 @@ export async function renderMediaViewer(
     return () => {};
   }
 
+  // Hemat kuota (Media Vault): bila media ukuran kecil ini pernah diunduh penuh
+  // (< 8 jam lalu), putar dari salinan terenkripsi di IndexedDB — jaringan
+  // tidak disentuh. Media besar (> 48 MB) tetap streaming HTTP Range agar
+  // tidak membebani disk/kuota dengan unduhan utuh.
+  const MAX_VAULT_CACHEABLE_BYTES = 48 * 1024 * 1024;
+  let playbackUrl = '';
+  let vaultObjectUrl: string | null = null;
+
+  if (file.size <= MAX_VAULT_CACHEABLE_BYTES) {
+    const vaultKey = await mediaVaultKey('viewer', repoType, repoId, revision, file.path);
+    const cachedBlob = await getFromMediaVault(vaultKey);
+    if (cachedBlob) {
+      vaultObjectUrl = URL.createObjectURL(cachedBlob);
+      playbackUrl = vaultObjectUrl;
+    }
+  }
+  if (!vaultObjectUrl) {
+    // Ambil URL streaming (signed/resolved redirect URL untuk repo privat)
+    playbackUrl = await resolvePrivateFileUrl(repoType, repoId, file.path, revision, token);
+  }
+
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   const isVideo = ['mp4', 'webm', 'mov', 'ogg'].includes(ext);
-
-  // Ambil URL streaming (signed/resolved redirect URL untuk repo privat)
-  const streamUrl = await resolvePrivateFileUrl(repoType, repoId, file.path, revision, token);
 
   const rootEl = document.createElement('div');
   rootEl.className = 'hs-media-viewer-root';
@@ -52,7 +71,7 @@ export async function renderMediaViewer(
       ${
         isVideo
           ? `
-        <video id="hs-media-element" class="hs-video-player" src="${esc(streamUrl)}" controls preload="metadata" playsinline>
+        <video id="hs-media-element" class="hs-video-player" src="${esc(playbackUrl)}" controls preload="metadata" playsinline>
           Peramban Anda tidak mendukung elemen video native.
         </video>
       `
@@ -62,7 +81,7 @@ export async function renderMediaViewer(
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
           </div>
           <div class="hs-audio-title">${esc(file.name)}</div>
-          <audio id="hs-media-element" class="hs-audio-player" src="${esc(streamUrl)}" controls preload="metadata">
+          <audio id="hs-media-element" class="hs-audio-player" src="${esc(playbackUrl)}" controls preload="metadata">
             Peramban Anda tidak mendukung elemen audio native.
           </audio>
         </div>
@@ -148,5 +167,8 @@ export async function renderMediaViewer(
       mediaEl.removeChild(mediaEl.firstChild);
     }
     mediaEl.load();
+    if (vaultObjectUrl) {
+      URL.revokeObjectURL(vaultObjectUrl);
+    }
   };
 }

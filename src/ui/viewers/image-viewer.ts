@@ -5,6 +5,7 @@
 
 import type { ViewerContext } from './types';
 import { downloadFileBlob, triggerFileDownload } from '../../api/tree';
+import { getFromMediaVault, putToMediaVault, mediaVaultKey } from '../../api/media-cache';
 import { MAX_PREVIEW_IMAGE } from './types';
 import { renderInfoCard } from './info-card';
 import { iconAlertCircle, iconDownload } from '../components/icons';
@@ -36,7 +37,15 @@ export async function renderImageViewer(
     return () => {};
   }
 
-  const blob = await downloadFileBlob(repoType, repoId, file.path, revision, token);
+  // Hemat kuota (Media Vault): bila berkas ini pernah diunduh < 8 jam lalu,
+  // ambil salinannya dari IndexedDB — jaringan tidak disentuh sama sekali.
+  const vaultKey = await mediaVaultKey('viewer', repoType, repoId, revision, file.path);
+  let blob = await getFromMediaVault(vaultKey);
+  if (!blob) {
+    blob = await downloadFileBlob(repoType, repoId, file.path, revision, token);
+    // Simpan ulang ke vault secara opportunistic (fire-and-forget).
+    void putToMediaVault(vaultKey, blob);
+  }
   if (blob.size === 0) {
     renderInfoCard(container, ctx, 'Berkas citra kosong (0 byte).');
     return () => {};
@@ -114,10 +123,25 @@ export async function renderImageViewer(
     btnZoomReset.textContent = `${Math.round(scale * 100)}%`;
   }
 
+  /** Hitung skala agar gambar utuh terlihat di jendela (tidak pernah melebihi 100%). */
+  function fitToViewport(): void {
+    const vpW = viewportEl.clientWidth - 40;
+    const vpH = viewportEl.clientHeight - 40;
+    const imgW = imgEl.naturalWidth || 400;
+    const imgH = imgEl.naturalHeight || 300;
+    const fit = Math.min(vpW / imgW, vpH / imgH, 1);
+    scale = Number.isFinite(fit) && fit > 0 ? fit : 1;
+    panX = 0;
+    panY = 0;
+    applyTransform();
+  }
+
   imgEl.onload = () => {
     const w = imgEl.naturalWidth;
     const h = imgEl.naturalHeight;
     dimsEl.textContent = `${w} × ${h} px (${(w / h).toFixed(2)}:1)`;
+    // Otomatis paskan ke layar saat pertama muncul (rAF: tunggu layout modal siap)
+    requestAnimationFrame(fitToViewport);
   };
 
   imgEl.onerror = () => {
@@ -168,14 +192,7 @@ export async function renderImageViewer(
   });
 
   btnZoomFit.addEventListener('click', () => {
-    const vpW = viewportEl.clientWidth - 40;
-    const vpH = viewportEl.clientHeight - 40;
-    const imgW = imgEl.naturalWidth || 400;
-    const imgH = imgEl.naturalHeight || 300;
-    scale = Math.min(vpW / imgW, vpH / imgH, 1);
-    panX = 0;
-    panY = 0;
-    applyTransform();
+    fitToViewport();
   });
 
   // Zoom dengan Wheel Mouse

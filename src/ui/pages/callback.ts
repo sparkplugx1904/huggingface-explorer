@@ -174,7 +174,7 @@ function renderError(card: HTMLElement, message: string): void {
   });
   btnRetry.textContent = 'Coba masuk lagi';
   btnRetry.addEventListener('click', () => {
-    navigate('/login');
+    navigate('/auth');
   });
 
   // Back home as guest
@@ -214,7 +214,7 @@ export function renderCallbackPage(container: HTMLElement): void {
   if (currentAuth.token && currentAuth.user) {
     const returnTo = sessionStorage.getItem('hs:auth:return_to');
     sessionStorage.removeItem('hs:auth:return_to');
-    const target = returnTo && returnTo !== '/callback' && returnTo !== '/login' ? returnTo : '/';
+    const target = returnTo && returnTo !== '/callback' && returnTo !== '/auth' ? returnTo : '/';
     navigate(target);
     return;
   }
@@ -225,7 +225,7 @@ export function renderCallbackPage(container: HTMLElement): void {
         // Sukses — redirect ke returnTo atau halaman utama
         const returnTo = sessionStorage.getItem('hs:auth:return_to');
         sessionStorage.removeItem('hs:auth:return_to');
-        const target = returnTo && returnTo !== '/callback' && returnTo !== '/login' ? returnTo : '/';
+        const target = returnTo && returnTo !== '/callback' && returnTo !== '/auth' ? returnTo : '/';
         navigate(target);
       } else {
         // handleCallback() returned null/undefined (bukan halaman callback)

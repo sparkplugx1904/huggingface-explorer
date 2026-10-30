@@ -20,8 +20,13 @@ export const MAX_PREVIEW_DOC = 25 * 1024 * 1024;
 /** Batas mutlak 1 GB: Jangan pernah memuat berkas >= 1 GB ke memori browser */
 export const MAX_PREVIEW_HARD_LIMIT = 1024 * 1024 * 1024;
 
-/** Maksimal ukuran berkas gambar untuk pembuatan thumbnail malas: 2 MB */
-export const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024;
+/** Maksimal ukuran berkas gambar untuk pembuatan thumbnail malas: 12 MB.
+ *  Decode pakai createImageBitmap asinkron + garansi waktu, jadi gambar besar tetap aman. */
+export const MAX_THUMBNAIL_SIZE = 12 * 1024 * 1024;
+
+/** Maksimal ukuran video untuk pengambilan poster frame thumbnail: 16 MB.
+ *  Hanya metadata + satu frame yang didekode, bukan seluruh isi klip. */
+export const MAX_VIDEO_THUMBNAIL_SIZE = 16 * 1024 * 1024;
 
 // ── Konteks Viewer ─────────────────────────────────────────────────────────
 

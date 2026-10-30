@@ -1,232 +1,285 @@
 /* ============================================================
-   Design Tokens — HuggingStudio
-   Modern developer tool design tokens.
-   Light: Crisp slate & white with amber accents.
-   Dark: Deep obsidian (#090d16) canvas with crisp 1px borders.
+   Design Tokens 2.0 — HuggingStudio ("Obsidian")
+   ------------------------------------------------------------
+   Sumber kebenaran seluruh palet, tipografi, spacing, radius,
+   elevasi, dan motion. Mode utama = Obsidian Dark (canvas
+   nyaris hitam dengan layer permukaan bertingkat). Mode terang
+   = slate putih bersih sebagai secondary.
+
+   Struktur token:
+   1. TOKEN SEMANTIK BARU  — dipakai semua CSS baru.
+   2. BRIDGE ALIAS `--hs-*` — kompatibilitas CSS lama; dua-duanya
+      menunjuk ke token semantik sehingga theme switch bekerja di
+      kedua arah tanpa duplikasi nilai.
    ============================================================ */
 
 :root {
-  /* --- Brand Accents (Amber) --- */
-  --hs-amber-500:      #f59e0b;
-  --hs-amber-400:      #fbbf24;
-  --hs-accent:         var(--hs-amber-500);
-  --hs-accent-hover:   #d97706;
-  --hs-accent-light:   #fef3c7;
-  --hs-accent-subtle:  rgba(245, 158, 11, 0.12);
-  --hs-accent-focus:   rgba(245, 158, 11, 0.25);
+  /* ── 1. TIPOGRAFI ─────────────────────────────────────────── */
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Legacy brand aliases for backward compatibility */
-  --hs-yellow:         #f59e0b;
-  --hs-orange:         #f59e0b;
+  --fs-11: 0.6875rem;   /* label mikro, badge, kbd            */
+  --fs-12: 0.75rem;     /* meta, caption                      */
+  --fs-13: 0.8125rem;   /* body default (density dev-tool)    */
+  --fs-14: 0.875rem;    /* body-large, input                  */
+  --fs-16: 1rem;        /* heading kecil                      */
+  --fs-18: 1.125rem;    /* heading section                    */
+  --fs-22: 1.375rem;    /* heading halaman                    */
+  --fs-28: 1.75rem;     /* hero                               */
 
-  /* --- Surfaces (Light mode default) --- */
-  --hs-canvas:         #f8fafc;   /* Page canvas background */
-  --hs-surface:        #ffffff;   /* Card, dialog, header background */
-  --hs-surface-hover:  #f1f5f9;   /* Hover state */
-  --hs-surface-2:      #f1f5f9;   /* Secondary surface (canvas/inputs) */
-  --hs-surface-3:      #e2e8f0;   /* Tertiary surface */
-  --hs-border:         #e2e8f0;   /* Crisp 1px borders */
-  --hs-border-strong:  #cbd5e1;   /* Focused/elevated borders */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
 
-  /* --- Typography Colors (Light) --- */
-  --hs-text:           #0f172a;   /* Slate 900 primary text */
-  --hs-text-muted:     #64748b;   /* Slate 500 secondary text */
-  --hs-text-subtle:    #94a3b8;   /* Slate 400 placeholder/caption */
-  --hs-text-inverse:   #ffffff;
+  /* ── 2. PERMUKAAN (dark default) ──────────────────────────── */
+  --canvas:           #05070d;                          /* latar app paling dalam      */
+  --surface:          #0a0f19;                          /* panel: rail, header, kartu  */
+  --surface-raised:   #101725;                          /* input, row hover, menu      */
+  --surface-overlay:  #151d30;                          /* modal, palette, dropdown    */
+  --surface-hover:    #121b2c;                          /* hover highlight             */
+  /* Alias lama */
+  --hs-surface-2: var(--surface-raised);
+  --hs-surface-3: #1c2536;
 
-  /* --- Semantic Colors --- */
-  --hs-error:          #ef4444;
-  --hs-error-bg:       #fef2f2;
-  --hs-error-border:   #fecaca;
-  --hs-success:        #10b981;
-  --hs-success-bg:     #ecfdf5;
-  --hs-success-border: #a7f3d0;
-  --hs-warning:        #f59e0b;
-  --hs-warning-bg:     #fffbeb;
-  --hs-warning-border: #fde68a;
+  /* ── 3. BORDER ────────────────────────────────────────────── */
+  --border:         rgba(148, 158, 184, 0.11);
+  --border-strong:  rgba(148, 158, 184, 0.22);
+  --border-focus:   rgba(245, 158, 11, 0.55);
+  --ring:           0 0 0 3px rgba(245, 158, 11, 0.22); /* ring fokus standar          */
 
-  /* --- Repo Type Badges (Sky, Emerald, Violet, Slate) --- */
-  --hs-color-model:       #0284c7;  /* Sky 600 */
-  --hs-color-model-bg:    #f0f9ff;  /* Sky 50 */
-  --hs-color-model-border:#bae6fd;  /* Sky 200 */
+  /* ── 4. TEKS ──────────────────────────────────────────────── */
+  --text:         #e7ecf5;
+  --text-muted:   #98a1b5;
+  --text-subtle:  #626b7d;
+  --text-inverse: #0a0f19;   /* teks di atas permukaan terang */
 
-  --hs-color-dataset:       #059669;  /* Emerald 600 */
-  --hs-color-dataset-bg:    #ecfdf5;  /* Emerald 50 */
-  --hs-color-dataset-border:#a7f3d0;  /* Emerald 200 */
+  /* ── 5. ACCENT (amber — hanya aksen kecil) ────────────────── */
+  --accent:         #f59e0b;
+  --accent-hover:   #fbbf24;
+  --accent-on:      #180e03;   /* teks di atas fill amber       */
+  --accent-dim:     rgba(245, 158, 11, 0.14);
+  --accent-glow:    rgba(245, 158, 11, 0.35);
 
-  --hs-color-space:       #7c3aed;  /* Violet 600 */
-  --hs-color-space-bg:    #f5f3ff;  /* Violet 50 */
-  --hs-color-space-border:#ddd6fe;  /* Violet 200 */
+  /* ── 6. SEMANTIK STATUS ───────────────────────────────────── */
+  --success: #34d399;
+  --success-dim: rgba(52, 211, 153, 0.12);
+  --success-border: rgba(52, 211, 153, 0.32);
+  --warning: #fbbf24;
+  --warning-dim: rgba(251, 191, 36, 0.12);
+  --warning-border: rgba(251, 191, 36, 0.32);
+  --error: #f87171;
+  --error-dim: rgba(248, 113, 113, 0.12);
+  --error-border: rgba(248, 113, 113, 0.30);
 
-  --hs-color-private:       #475569;  /* Slate 600 */
-  --hs-color-private-bg:    #f8fafc;  /* Slate 50 */
-  --hs-color-private-border:#e2e8f0;  /* Slate 200 */
+  /* ── 7. WARNA KATEGORIKAL --c1..c6 (tipe berkas, tipos repo,
+        distribusi, diff).
+        c1 blue=model · c2 emerald=dataset · c3 violet=space
+        c4 pink=media/art · c5 amber=LFS/arsip · c6 sky=data    */
+  --c1: #60a5fa;
+  --c2: #34d399;
+  --c3: #a78bfa;
+  --c4: #f472b6;
+  --c5: #fbbf24;
+  --c6: #7dd3fc;
+  --c-dim: 0.13;
 
-  /* --- Spacing (4px scale) --- */
-  --hs-space-1:  0.25rem;   /* 4px  */
-  --hs-space-2:  0.5rem;    /* 8px  */
-  --hs-space-3:  0.75rem;   /* 12px */
-  --hs-space-4:  1rem;      /* 16px */
-  --hs-space-5:  1.25rem;   /* 20px */
-  --hs-space-6:  1.5rem;    /* 24px */
-  --hs-space-7:  1.75rem;   /* 28px */
-  --hs-space-8:  2rem;      /* 32px */
-  --hs-space-9:  2.25rem;   /* 36px */
-  --hs-space-10: 2.5rem;    /* 40px */
+  /* ── 8. SPACING (skala 4px) ───────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-9: 2.25rem;
+  --space-10: 2.5rem;
 
-  /* --- Modern Developer Tool Radius (NO 9999px for buttons!) --- */
-  --hs-radius-sm:    4px;   /* badges, compact tags */
-  --hs-radius:       6px;   /* buttons, inputs, dropdown items */
-  --hs-radius-lg:    8px;   /* large buttons, secondary cards */
-  --hs-radius-card:  10px;  /* cards & panels */
-  --hs-radius-modal: 10px;  /* modals & dialogs */
-  --hs-radius-xl:    10px;  /* standardized 10px for cards & modals */
-  --hs-radius-full:  9999px; /* ONLY for circular avatars and status dots */
-  /* --- Elevation / Shadows --- */
-  --hs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --hs-shadow:    0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.06);
-  --hs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  /* ── 9. RADIUS (anti-pill; penuh hanya titik/avatar) ─────── */
+  --radius-sm:  4px;      /* badge, tag                          */
+  --radius:     6px;      /* tombol, input, item menu            */
+  --radius-lg:  8px;      /* tombol lg, menu                     */
+  --radius-xl:  10px;     /* kartu, panel, modal                 */
+  --radius-full: 9999px;  /* HANYA avatar, titik, dot status     */
 
-  /* --- Typography --- */
-  --hs-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --hs-font-mono: ui-monospace, "Cascadia Code", "Fira Code", "JetBrains Mono", SFMono-Regular, monospace;
+  /* ── 10. ELEVASI ─────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.45);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 12px 32px -6px rgb(0 0 0 / 0.6), inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+  --shadow-xl: 0 24px 64px -12px rgb(0 0 0 / 0.7), inset 0 1px 0 0 rgb(255 255 255 / 0.05);
 
-  --hs-text-xs:   0.75rem;
-  --hs-text-sm:   0.875rem;
-  --hs-text-base: 1rem;
-  --hs-text-lg:   1.125rem;
-  --hs-text-xl:   1.25rem;
-  --hs-text-2xl:  1.5rem;
+  /* ── 11. MOTION ──────────────────────────────────────────── */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snap: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  /* --- Transitions --- */
-  --hs-transition-fast: 120ms ease;
-  --hs-transition:      200ms ease;
-  --hs-transition-slow: 280ms cubic-bezier(0.16, 1, 0.3, 1);
-  --hs-ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+  /* ── 12. LAYOUT ──────────────────────────────────────────── */
+  --header-h: 48px;         /* slim dev-tool header            */
+  --rail-w: 256px;          /* sidebar desktop                 */
+  --drawer-w: 280px;        /* drawer mobile                   */
+  --row-h: 34px;            /* tinggi baris list file/repo     */
 
-  /* --- Z-index Layers --- */
-  --hs-z-dropdown: 100;
-  --hs-z-overlay:  200;
-  --hs-z-modal:    300;
-  --hs-z-toast:    400;
+  /* ── 13. Z-INDEX ─────────────────────────────────────────── */
+  --z-sticky: 10;
+  --z-dropdown: 100;
+  --z-overlay: 200;
+  --z-modal: 300;
+  --z-toast: 400;
 
-  /* --- Layout Dimensions --- */
-  --hs-header-h:         52px;
-  --hs-sidebar-w:        240px;
-  --hs-sidebar-mobile-w: 280px;
+  color-scheme: dark;
+
+  /* ============================================================
+     BRIDGE ALIAS `--hs-*` — kompatibilitas penuh dengan CSS lama.
+     Semua menunjuk token semantik di atas → theme switchgratis.
+     ============================================================ */
+  --hs-amber-500: var(--accent);
+  --hs-amber-400: var(--accent-hover);
+  --hs-yellow: var(--accent);
+  --hs-orange: var(--accent);
+
+  --hs-accent: var(--accent);
+  --hs-accent-hover: var(--accent-hover);
+  --hs-accent-light: var(--accent-dim);
+  --hs-accent-subtle: var(--accent-dim);
+  --hs-accent-focus: var(--accent-glow);
+
+  --hs-canvas: var(--canvas);
+  --hs-surface: var(--surface);
+  --hs-surface-hover: var(--surface-hover);
+
+  --hs-border: var(--border);
+  --hs-border-strong: var(--border-strong);
+
+  --hs-text: var(--text);
+  --hs-text-muted: var(--text-muted);
+  --hs-text-subtle: var(--text-subtle);
+  --hs-text-inverse: var(--text-inverse);
+
+  --hs-error: var(--error);
+  --hs-error-bg: var(--error-dim);
+  --hs-error-border: var(--error-border);
+  --hs-success: var(--success);
+  --hs-success-bg: var(--success-dim);
+  --hs-success-border: var(--success-border);
+  --hs-warning: var(--warning);
+  --hs-warning-bg: var(--warning-dim);
+  --hs-warning-border: var(--warning-border);
+
+  --hs-color-model: var(--c1);
+  --hs-color-model-bg: rgb(96 165 250 / var(--c-dim));
+  --hs-color-model-border: rgb(96 165 250 / 0.3);
+  --hs-color-dataset: var(--c2);
+  --hs-color-dataset-bg: rgb(52 211 153 / var(--c-dim));
+  --hs-color-dataset-border: rgb(52 211 153 / 0.3);
+  --hs-color-space: var(--c3);
+  --hs-color-space-bg: rgb(167 139 250 / var(--c-dim));
+  --hs-color-space-border: rgb(167 139 250 / 0.3);
+  --hs-color-private: var(--text-muted);
+  --hs-color-private-bg: rgb(148 163 184 / var(--c-dim));
+  --hs-color-private-border: rgb(148 163 184 / 0.3);
+
+  --hs-space-1: var(--space-1);
+  --hs-space-2: var(--space-2);
+  --hs-space-3: var(--space-3);
+  --hs-space-4: var(--space-4);
+  --hs-space-5: var(--space-5);
+  --hs-space-6: var(--space-6);
+  --hs-space-7: var(--space-7);
+  --hs-space-8: var(--space-8);
+  --hs-space-9: var(--space-9);
+  --hs-space-10: var(--space-10);
+
+  --hs-radius-sm: var(--radius-sm);
+  --hs-radius: var(--radius);
+  --hs-radius-lg: var(--radius-lg);
+  --hs-radius-card: var(--radius-xl);
+  --hs-radius-modal: var(--radius-xl);
+  --hs-radius-xl: var(--radius-xl);
+  --hs-radius-full: var(--radius-full);
+
+  --hs-shadow-sm: var(--shadow-sm);
+  --hs-shadow: var(--shadow-md);
+  --hs-shadow-lg: var(--shadow-lg);
+
+  --hs-font-body: var(--font-ui);
+  --hs-font-mono: var(--font-mono);
+
+  --hs-text-xs: var(--fs-12);
+  --hs-text-sm: var(--fs-14);
+  --hs-text-base: var(--fs-16);
+  --hs-text-lg: var(--fs-18);
+  --hs-text-xl: var(--fs-22);
+  --hs-text-2xl: var(--fs-28);
+
+  --hs-transition-fast: var(--dur-fast) ease;
+  --hs-transition: var(--dur-base) ease;
+  --hs-transition-slow: var(--dur-slow) var(--ease-out);
+  --hs-ease-out: var(--ease-out);
+
+  --hs-z-dropdown: var(--z-dropdown);
+  --hs-z-overlay: var(--z-overlay);
+  --hs-z-modal: var(--z-modal);
+  --hs-z-toast: var(--z-toast);
+
+  --hs-header-h: var(--header-h);
+  --hs-sidebar-w: var(--rail-w);
+  --hs-sidebar-mobile-w: var(--drawer-w);
 }
 
-/* ==============================================
-   Dark Mode — Deep Obsidian Canvas (#090d16)
-   Crisp 1px borders, subtle amber accents.
-   ============================================== */
-[data-theme="dark"] {
-  /* --- Brand Accents (Dark) --- */
-  --hs-accent:         #f59e0b;
-  --hs-accent-hover:   #fbbf24;
-  --hs-accent-light:   rgba(245, 158, 11, 0.2);
-  --hs-accent-subtle:  rgba(245, 158, 11, 0.15);
-  --hs-accent-focus:   rgba(245, 158, 11, 0.3);
-  /* --- Surfaces (Dark) --- */
-  --hs-canvas:         #090d16;   /* Deep obsidian background */
-  --hs-surface:        #0f172a;   /* Card, header, dialog surface */
-  --hs-surface-hover:  #1e293b;   /* Hover highlight */
-  --hs-surface-2:      #0d1322;   /* Secondary surface */
-  --hs-surface-3:      #1e293b;   /* Tertiary surface */
-  --hs-border:         rgba(255, 255, 255, 0.08); /* Crisp subtle border */
-  --hs-border-strong:  #1e293b;
+/* ============================================================
+   LIGHT MODE — slate putih bersih, aksen amber lebih gelap
+   demi kontras AA di atas putih.
+   ============================================================ */
+[data-theme="light"] {
+  --canvas: #f7f8fb;
+  --surface: #ffffff;
+  --surface-raised: #f3f5f9;
+  --surface-overlay: #ffffff;
+  --surface-hover: #f1f4f9;
+  --hs-surface-3: #e8ecf3;
 
-  /* --- Typography Colors (Dark) --- */
-  --hs-text:           #f8fafc;   /* Slate 50 bright text */
-  --hs-text-muted:     #94a3b8;   /* Slate 400 muted text */
-  --hs-text-subtle:    #64748b;   /* Slate 500 caption text */
-  --hs-text-inverse:   #090d16;
+  --border: #e4e8f0;
+  --border-strong: #d2d8e4;
+  --border-focus: rgba(180, 83, 9, 0.6);
+  --ring: 0 0 0 3px rgba(180, 83, 9, 0.18);
 
-  /* --- Semantic Colors (Dark) --- */
-  --hs-error:          #f87171;
-  --hs-error-bg:       rgba(239, 68, 68, 0.12);
-  --hs-error-border:   rgba(239, 68, 68, 0.25);
-  --hs-success:        #34d399;
-  --hs-success-bg:     rgba(16, 185, 129, 0.12);
-  --hs-success-border: rgba(16, 185, 129, 0.25);
-  --hs-warning:        #fbbf24;
-  --hs-warning-bg:     rgba(245, 158, 11, 0.12);
-  --hs-warning-border: rgba(245, 158, 11, 0.25);
+  --text: #101726;
+  --text-muted: #5a6478;
+  --text-subtle: #8b94a8;
+  --text-inverse: #ffffff;
 
-  /* --- Repo Type Badges (Dark Mode: Elegant Translucent) --- */
-  --hs-color-model:       #38bdf8;  /* Sky 400 */
-  --hs-color-model-bg:    rgba(56, 189, 248, 0.12);
-  --hs-color-model-border:rgba(56, 189, 248, 0.28);
+  --accent: #b45309;               /* teks/ikon accent kontras AA   */
+  --accent-hover: #92400e;
+  --accent-on: #ffffff;
+  --accent-dim: rgba(217, 119, 6, 0.12);
+  --accent-glow: rgba(217, 119, 6, 0.35);
+  --hs-amber-500: #d97706;         /* dekoratif bila konteks gelap  */
 
-  --hs-color-dataset:       #34d399;  /* Emerald 400 */
-  --hs-color-dataset-bg:    rgba(52, 211, 153, 0.12);
-  --hs-color-dataset-border:rgba(52, 211, 153, 0.28);
+  --success: #059669;
+  --success-dim: rgba(5, 150, 105, 0.10);
+  --success-border: rgba(5, 150, 105, 0.32);
+  --warning: #b45309;
+  --warning-dim: rgba(180, 83, 9, 0.10);
+  --warning-border: rgba(180, 83, 9, 0.32);
+  --error: #dc2626;
+  --error-dim: rgba(220, 38, 38, 0.08);
+  --error-border: rgba(220, 38, 38, 0.30);
 
-  --hs-color-space:       #a78bfa;  /* Violet 400 */
-  --hs-color-space-bg:    rgba(167, 139, 250, 0.12);
-  --hs-color-space-border:rgba(167, 139, 250, 0.28);
+  --c1: #2f6fbf;
+  --c2: #0b8a5f;
+  --c3: #7c3aed;
+  --c4: #d6267d;
+  --c5: #b45309;
+  --c6: #0891b2;
+  --c-dim: 0.12;
 
-  --hs-color-private:       #94a3b8;  /* Slate 400 */
-  --hs-color-private-bg:    rgba(148, 163, 184, 0.12);
-  --hs-color-private-border:rgba(148, 163, 184, 0.28);
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(16 24 40 / 0.10);
+  --shadow-lg: 0 12px 32px -6px rgb(16 24 40 / 0.16), inset 0 1px 0 0 rgb(255 255 255 / 0.6);
+  --shadow-xl: 0 24px 64px -12px rgb(16 24 40 / 0.22), inset 0 1px 0 0 rgb(255 255 255 / 0.6);
 
-  /* --- Shadows (Dark) --- */
-  --hs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
-  --hs-shadow:    0 1px 3px 0 rgb(0 0 0 / 0.6), 0 1px 2px -1px rgb(0 0 0 / 0.5);
-  --hs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -4px rgb(0 0 0 / 0.6);
-}
-
-/* ==============================================
-   Dark mode — System Media Query Fallback
-   ============================================== */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --hs-accent:         #f59e0b;
-    --hs-accent-hover:   #fbbf24;
-    --hs-accent-light:   rgba(245, 158, 11, 0.2);
-    --hs-accent-subtle:  rgba(245, 158, 11, 0.15);
-    --hs-accent-focus:   rgba(245, 158, 11, 0.3);
-    --hs-canvas:         #090d16;
-    --hs-surface:        #0f172a;
-    --hs-surface-hover:  #1e293b;
-    --hs-surface-2:      #0d1322;
-    --hs-surface-3:      #1e293b;
-    --hs-border:         rgba(255, 255, 255, 0.08);
-    --hs-border-strong:  #1e293b;
-
-    --hs-text:           #f8fafc;
-    --hs-text-muted:     #94a3b8;
-    --hs-text-subtle:    #64748b;
-    --hs-text-inverse:   #090d16;
-
-    --hs-error:          #f87171;
-    --hs-error-bg:       rgba(239, 68, 68, 0.12);
-    --hs-error-border:   rgba(239, 68, 68, 0.25);
-    --hs-success:        #34d399;
-    --hs-success-bg:     rgba(16, 185, 129, 0.12);
-    --hs-success-border: rgba(16, 185, 129, 0.25);
-    --hs-warning:        #fbbf24;
-    --hs-warning-bg:     rgba(245, 158, 11, 0.12);
-    --hs-warning-border: rgba(245, 158, 11, 0.25);
-
-    --hs-color-model:       #38bdf8;
-    --hs-color-model-bg:    rgba(56, 189, 248, 0.12);
-    --hs-color-model-border:rgba(56, 189, 248, 0.28);
-
-    --hs-color-dataset:       #34d399;
-    --hs-color-dataset-bg:    rgba(52, 211, 153, 0.12);
-    --hs-color-dataset-border:rgba(52, 211, 153, 0.28);
-
-    --hs-color-space:       #a78bfa;
-    --hs-color-space-bg:    rgba(167, 139, 250, 0.12);
-    --hs-color-space-border:rgba(167, 139, 250, 0.28);
-
-    --hs-color-private:       #94a3b8;
-    --hs-color-private-bg:    rgba(148, 163, 184, 0.12);
-    --hs-color-private-border:rgba(148, 163, 184, 0.28);
-
-    --hs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
-    --hs-shadow:    0 1px 3px 0 rgb(0 0 0 / 0.6), 0 1px 2px -1px rgb(0 0 0 / 0.5);
-    --hs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -4px rgb(0 0 0 / 0.6);
-  }
+  color-scheme: light;
 }

@@ -11,10 +11,11 @@ import type { NameConflictResolution } from '../components/dialogs';
 import { navigate } from '../../router';
 import {
   fetchDirectoryContents,
-  fetchFullRepoTree,
+  fetchFolderSubtree,
   getRepoHeadCommit,
   downloadFolderAsZip,
   triggerFileDownload,
+  invalidateTreeCache,
 } from '../../api/tree';
 import { getRepoInfo } from '../../api/repos';
 import {
@@ -190,15 +191,25 @@ export function renderFileManagerPage(
   // State lokal halaman
   let currentPath = initialPath.replace(/^\/+|\/+$/g, '');
   let entries: FileEntry[] = [];
-  let fullTree: FileEntry[] = [];
   let repoMetadata: RepoInfo | null = null;
   let headCommitSha = '';
   let isLoading = false;
   let viewMode: 'grid' | 'list' = (sessionStorage.getItem('hs:fm:view') as 'grid' | 'list') ?? 'grid';
-  let sortBy: 'name' | 'size' | 'date' = 'name';
+  let sortBy: 'name' | 'size' | 'date' | 'type' = 'name';
   let sortAsc = true;
   let searchQuery = '';
   const selectedPaths = new Set<string>();
+
+  // State peta berkas GitHub-style: cache level per parent-path, diisi LAJI saat folder dibuka
+  let fileTreeIndex = new Map<string, FileEntry[]>();
+  // Set folder path yang dibuka (chevron); root '' selalu terbuka
+  const treeExpanded = new Set<string>(['']);
+  // Permintaan level yang sedang jalan (single-flight agar tidak dobel fetch)
+  const treePending = new Map<string, Promise<FileEntry[]>>();
+  // Level yang gagal dimuat (ditampilkan tombol coba lagi)
+  const treeFailed = new Set<string>();
+  // Posisi scroll panel tree agar tidak lompat saat toggle expand/collapse
+  let treeScrollTop = 0;
 
   // Root container
   container.innerHTML = '';
@@ -269,22 +280,24 @@ export function renderFileManagerPage(
     headerEl.innerHTML = `
       <div class="fm-header-top">
         <div class="fm-header-info">
-          <a href="/${esc(owner)}" class="btn btn-ghost btn-sm" style="padding:0.35rem 0.5rem;display:inline-flex;align-items:center" title="Kembali ke profil">
+          <a href="/${esc(owner)}" class="btn btn-ghost btn-sm fm-icon-btn" title="Kembali ke profil" aria-label="Kembali ke profil">
             ${iconArrowLeft(16)}
           </a>
-          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+          <div class="fm-repo-meta">
             <h1 class="fm-repo-title">
-              <span class="fm-repo-owner">${esc(owner)}/</span><span>${esc(repoName)}</span>
+              <span class="fm-repo-owner">${esc(owner)}/</span><span class="fm-repo-name">${esc(repoName)}</span>
             </h1>
-            <span class="badge badge-${esc(repoType)}">${badgeType}</span>
-            ${isPrivate ? '<span class="badge badge-private">Private</span>' : ''}
+            <div class="fm-repo-badges">
+              <span class="badge badge-${esc(repoType)}">${badgeType}</span>
+              ${isPrivate ? '<span class="badge badge-private">Private</span>' : ''}
+            </div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:0.5rem">
-          <button id="btn-toggle-tree" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:0.35rem" title="Buka panel folder">
-            ${iconFolder(15)} <span>Folder</span>
+        <div class="fm-header-actions">
+          <button id="btn-toggle-tree" class="btn btn-secondary btn-sm" title="Buka panel folder" aria-label="Buka panel folder">
+            ${iconFolder(15)} <span class="fm-btn-label">Folder</span>
           </button>
-          <button id="btn-refresh" class="btn btn-ghost btn-sm" style="padding:0.35rem 0.5rem;display:inline-flex;align-items:center" title="Muat ulang isi folder">
+          <button id="btn-refresh" class="btn btn-ghost btn-sm fm-icon-btn" title="Muat ulang isi folder" aria-label="Muat ulang isi folder">
             ${iconRefresh(16)}
           </button>
         </div>
@@ -324,6 +337,16 @@ export function renderFileManagerPage(
     });
     bar.appendChild(rootCrumb);
 
+    // Aksi edit inline: pensil di ujung trail → seluruh jalur jadi input
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'fm-breadcrumb-edit';
+    editBtn.title = 'Edit jalur';
+    editBtn.setAttribute('aria-label', 'Edit jalur folder');
+    editBtn.innerHTML = iconEdit(13);
+    editBtn.addEventListener('click', () => startPathEdit(bar));
+    bar.appendChild(editBtn);
+
     if (isRoot) return;
 
     const parts = currentPath.split('/');
@@ -353,6 +376,43 @@ export function renderFileManagerPage(
     }
   }
 
+  /** Ganti trail breadcrumb menjadi satu input path (Enter = navigasi, Esc = batal). */
+  function startPathEdit(bar: HTMLElement): void {
+    if (bar.classList.contains('editing')) return;
+    bar.classList.add('editing');
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'fm-breadcrumb-input';
+    input.value = currentPath;
+    input.setAttribute('aria-label', 'Jalur folder');
+    input.setAttribute('spellcheck', 'false');
+    input.setAttribute('autocomplete', 'off');
+    bar.appendChild(input);
+    input.focus();
+    input.select();
+
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const next = input.value.replace(/^\/+|\/+$/g, '').trim();
+        bar.classList.remove('editing');
+        renderBreadcrumb();
+        if (next !== currentPath) void navigateToFolder(next);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        bar.classList.remove('editing');
+        renderBreadcrumb();
+      }
+    });
+    input.addEventListener('blur', () => {
+      if (bar.classList.contains('editing')) {
+        bar.classList.remove('editing');
+        renderBreadcrumb();
+      }
+    });
+  }
+
   function renderToolbar(): void {
     const bar = headerEl.querySelector<HTMLElement>('#fm-toolbar-bar');
     if (!bar) return;
@@ -360,8 +420,8 @@ export function renderFileManagerPage(
     bar.innerHTML = `
       <div class="fm-toolbar-left">
         <div class="fm-upload-dropdown">
-          <button id="btn-upload" class="btn btn-primary btn-sm" style="display:flex;align-items:center;gap:0.4rem" type="button">
-            ${iconUpload(15)} <span>Unggah</span> ${iconChevronDown(13)}
+          <button id="btn-upload" class="btn btn-primary btn-sm" type="button" aria-haspopup="true" aria-expanded="false">
+            ${iconUpload(15)} <span class="fm-btn-label">Unggah</span> ${iconChevronDown(13)}
           </button>
           <div id="upload-menu" class="fm-upload-menu">
             <button id="menu-upload-file" class="fm-upload-menu-item" type="button">
@@ -373,16 +433,16 @@ export function renderFileManagerPage(
           </div>
         </div>
 
-        <button id="btn-create-folder" class="btn btn-secondary btn-sm" style="display:flex;align-items:center;gap:0.4rem" type="button">
-          ${iconPlus(15)} <span>Folder Baru</span>
+        <button id="btn-create-folder" class="btn btn-secondary btn-sm" type="button" title="Buat folder baru di folder ini">
+          ${iconPlus(15)} <span class="fm-btn-label">Folder Baru</span>
         </button>
 
-        <button id="btn-repo-history" class="btn btn-secondary btn-sm" style="display:flex;align-items:center;gap:0.4rem" type="button" title="Lihat riwayat commit repositori">
-          ${iconHistory(15)} <span>Riwayat</span>
+        <button id="btn-repo-history" class="btn btn-secondary btn-sm" type="button" title="Lihat riwayat commit repositori" aria-label="Riwayat commit">
+          ${iconHistory(15)} <span class="fm-btn-label">Riwayat</span>
         </button>
 
-        <button id="btn-recently-deleted" class="btn btn-secondary btn-sm" style="display:flex;align-items:center;gap:0.4rem" type="button" title="Lihat dan pulihkan berkas yang baru dihapus">
-          ${iconRotateCcw(15)} <span>Baru Dihapus</span>
+        <button id="btn-recently-deleted" class="btn btn-secondary btn-sm" type="button" title="Lihat dan pulihkan berkas yang baru dihapus" aria-label="Baru dihapus">
+          ${iconRotateCcw(15)} <span class="fm-btn-label">Baru Dihapus</span>
         </button>
       </div>
 
@@ -393,41 +453,47 @@ export function renderFileManagerPage(
             id="fm-search-input"
             class="input"
             type="search"
-            placeholder="Cari berkas… (/ atau Ctrl+K)"
+            placeholder="Cari berkas… (/)"
             aria-label="Cari berkas dalam repositori"
             aria-keyshortcuts="/ Control+K"
             value="${esc(searchQuery)}"
           />
         </div>
 
-        <select id="fm-sort-select" class="select" style="height:36px;font-size:0.85rem">
+        <select id="fm-sort-select" class="select fm-sort-select" aria-label="Urutkan berkas">
           <option value="name_asc" ${sortBy === 'name' && sortAsc ? 'selected' : ''}>Nama (A-Z)</option>
           <option value="name_desc" ${sortBy === 'name' && !sortAsc ? 'selected' : ''}>Nama (Z-A)</option>
           <option value="size_desc" ${sortBy === 'size' && !sortAsc ? 'selected' : ''}>Ukuran Terbesar</option>
           <option value="size_asc" ${sortBy === 'size' && sortAsc ? 'selected' : ''}>Ukuran Terkecil</option>
           <option value="date_desc" ${sortBy === 'date' && !sortAsc ? 'selected' : ''}>Terbaru Diubah</option>
+          <option value="type_asc" ${sortBy === 'type' && sortAsc ? 'selected' : ''}>Jenis Berkas (A-Z)</option>
+          <option value="type_desc" ${sortBy === 'type' && !sortAsc ? 'selected' : ''}>Jenis Berkas (Z-A)</option>
         </select>
 
-        <div style="display:flex;border:1px solid var(--hs-border,#e2e8f0);border-radius:var(--hs-radius,6px);overflow:hidden">
-          <button id="btn-view-grid" class="btn btn-ghost btn-sm" style="padding:0.35rem 0.6rem;height:36px;background:${viewMode === 'grid' ? 'var(--hs-surface-2,#f1f5f9)' : 'transparent'}" title="Tampilan Kotak" type="button">
+        <div class="fm-view-toggle" role="group" aria-label="Mode tampilan">
+          <button id="btn-view-grid" class="fm-view-btn ${viewMode === 'grid' ? 'active' : ''}" type="button" title="Tampilan Kotak" aria-label="Tampilan kotak" aria-pressed="${viewMode === 'grid'}">
             ${iconGrid(16)}
           </button>
-          <button id="btn-view-list" class="btn btn-ghost btn-sm" style="padding:0.35rem 0.6rem;height:36px;background:${viewMode === 'list' ? 'var(--hs-surface-2,#f1f5f9)' : 'transparent'}" title="Tampilan Tabel" type="button">
+          <button id="btn-view-list" class="fm-view-btn ${viewMode === 'list' ? 'active' : ''}" type="button" title="Tampilan Tabel" aria-label="Tampilan tabel" aria-pressed="${viewMode === 'list'}">
             ${iconList(16)}
           </button>
         </div>
       </div>
     `;
 
-    // Dropdown Unggah toggling
-    const uploadBtn = bar.querySelector('#btn-upload');
+    // Dropdown Unggah toggling (sinkron dengan aria-expanded untuk aksesibilitas)
+    const uploadBtn = bar.querySelector<HTMLButtonElement>('#btn-upload');
     const uploadMenu = bar.querySelector<HTMLElement>('#upload-menu');
+    const setUploadOpen = (open: boolean): void => {
+      uploadMenu?.classList.toggle('open', open);
+      uploadBtn?.setAttribute('aria-expanded', String(open));
+    };
     uploadBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      uploadMenu?.classList.toggle('open');
+      setUploadOpen(!uploadMenu?.classList.contains('open'));
     });
     window.addEventListener('click', () => {
-      uploadMenu?.classList.remove('open');
+      setUploadOpen(false);
     });
 
     // Hidden file inputs
@@ -495,6 +561,8 @@ export function renderFileManagerPage(
         else if (val === 'size_desc') { sortBy = 'size'; sortAsc = false; }
         else if (val === 'size_asc') { sortBy = 'size'; sortAsc = true; }
         else if (val === 'date_desc') { sortBy = 'date'; sortAsc = false; }
+        else if (val === 'type_asc') { sortBy = 'type'; sortAsc = true; }
+        else if (val === 'type_desc') { sortBy = 'type'; sortAsc = false; }
         refreshFileList();
       }
     });
@@ -599,7 +667,7 @@ export function renderFileManagerPage(
     bar.querySelector('#btn-select-move')?.addEventListener('click', () => {
       const first = entries.find((e) => selectedPaths.has(e.path));
       if (!first) return;
-      openMoveToFolderPicker(first, fullTree, (targetFolder) => {
+      openMoveToFolderPicker(first, knownTreeEntries(), (targetFolder) => {
         for (const path of selectedPaths) {
           const item = entries.find((e) => e.path === path);
           if (!item) continue;
@@ -614,12 +682,208 @@ export function renderFileManagerPage(
     });
   }
 
-  // ── Render Tree Panel (Sidebar Kiri) ────────────────────────────────────
+  // ── Render Tree Panel (Sidebar Kiri — lazy per folder) ───────────────────
+
+  /**
+   * Pastikan isi level folder ada di cache — LAZY: folder hanya di-scan saat
+   * pertama kali dibuka (atau saat restore rantai folder yang sedang dibuka).
+   * Satu path hanya boleh punya satu request berjalan (single-flight).
+   */
+  function ensureTreeLevel(dirPath: string): Promise<FileEntry[]> {
+    const cached = fileTreeIndex.get(dirPath);
+    if (cached) return Promise.resolve(cached);
+
+    const pending = treePending.get(dirPath);
+    if (pending) return pending;
+
+    treeFailed.delete(dirPath);
+
+    const job = fetchDirectoryContents(repoType, repoId, dirPath, 'main', token)
+      .then((children) => {
+        fileTreeIndex.set(dirPath, children);
+        return children;
+      })
+      .catch((err: unknown) => {
+        treeFailed.add(dirPath);
+        throw err;
+      })
+      .finally(() => {
+        treePending.delete(dirPath);
+        refreshTreeRows();
+      });
+
+    treePending.set(dirPath, job);
+    return job;
+  }
+
+  /** Gabungan semua entri level yang sudah termuat (untuk pemindah folder & navigasi viewer). */
+  function knownTreeEntries(): FileEntry[] {
+    const all: FileEntry[] = [];
+    for (const bucket of fileTreeIndex.values()) {
+      all.push(...bucket);
+    }
+    return all;
+  }
+
+  /** Buka seluruh rantai ancestor sebuah path, dan mulai muat level yang dibutuhkan (lazy). */
+  function expandAncestors(path: string): void {
+    void ensureTreeLevel('');
+    if (!path) return;
+    const parts = path.split('/');
+    let cur = '';
+    for (const p of parts) {
+      cur = cur ? `${cur}/${p}` : p;
+      treeExpanded.add(cur);
+      void ensureTreeLevel(cur);
+    }
+  }
+
+  function makeDirRow(entry: FileEntry, level: number, isOpen: boolean): HTMLDivElement {
+    const row = document.createElement('div');
+    row.className = `fm-tree-row dir${entry.path === currentPath ? ' active' : ''} ${isOpen ? 'expanded' : ''}`;
+    row.style.setProperty('--level', String(level));
+    row.dataset.path = entry.path;
+
+    const chevron = document.createElement('button');
+    chevron.type = 'button';
+    chevron.className = `fm-tree-chevron${isOpen ? ' open' : ''}`;
+    chevron.setAttribute('aria-expanded', String(isOpen));
+    chevron.setAttribute('aria-label', `${isOpen ? 'Tutup' : 'Buka'} ${entry.name}`);
+    chevron.innerHTML = iconChevronRight(12);
+    chevron.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (treeExpanded.has(entry.path)) {
+        treeExpanded.delete(entry.path);
+      } else {
+        treeExpanded.add(entry.path);
+        // Muat isi folder ini saat pertama kali dibuka (lazy, single-flight)
+        void ensureTreeLevel(entry.path).catch(() => {});
+      }
+      refreshTreeRows();
+    });
+
+    const label = document.createElement('span');
+    label.className = 'fm-tree-label';
+    label.textContent = entry.name;
+
+    const iconWrap = document.createElement('span');
+    iconWrap.className = 'fm-tree-visual';
+    iconWrap.innerHTML = getFileIconSvg(entry.name, true, 15, isOpen);
+
+    row.append(chevron, iconWrap, label);
+    attachCrumbDropTarget(row, entry.path);
+    row.addEventListener('click', () => {
+      closeMobileTree();
+      if (entry.path !== currentPath) void navigateToFolder(entry.path);
+    });
+    return row;
+  }
+
+  function makeFileRow(entry: FileEntry, level: number): HTMLDivElement {
+    const row = document.createElement('div');
+    row.className = 'fm-tree-row file';
+    row.style.setProperty('--level', String(level));
+    row.title = entry.path;
+
+    const label = document.createElement('span');
+    label.className = 'fm-tree-label';
+    label.textContent = entry.name;
+
+    const iconWrap = document.createElement('span');
+    iconWrap.className = 'fm-tree-visual';
+    iconWrap.innerHTML = getFileIconSvg(entry.name, false, 14);
+
+    row.append(iconWrap, label);
+    row.addEventListener('click', () => {
+      closeMobileTree();
+      openFileViewerModal({
+        repoType,
+        repoId,
+        revision: 'main',
+        file: entry,
+        token,
+        allFiles: knownTreeEntries(),
+      });
+    });
+    return row;
+  }
+
+  /** Baris status di dalam folder yang belum termuat / gagal dimuat. */
+  function makeLevelStatusRow(dirPath: string, level: number): HTMLDivElement {
+    const row = document.createElement('div');
+    row.className = 'fm-tree-row file';
+    row.style.setProperty('--level', String(level));
+    row.dataset.parent = dirPath;
+
+    const visual = document.createElement('span');
+    visual.className = 'fm-tree-visual';
+
+    const label = document.createElement('span');
+    label.className = 'fm-tree-label fm-tree-label-status';
+
+    if (treeFailed.has(dirPath)) {
+      row.classList.add('fm-tree-row-error');
+
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'fm-tree-retry';
+      retry.textContent = 'Coba lagi';
+      retry.addEventListener('click', (e) => {
+        e.stopPropagation();
+        void ensureTreeLevel(dirPath).catch(() => {});
+      });
+
+      label.textContent = 'Gagal memuat isi';
+      visual.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+      row.append(visual, label, retry);
+      return row;
+    }
+
+    const spinnerIcon = document.createElement('span');
+    spinnerIcon.className = 'fm-tree-spinner';
+    visual.appendChild(spinnerIcon);
+    visual.className += ' fm-tree-visual-spinner';
+    label.textContent = 'Memuat isi folder…';
+    row.append(visual, label);
+    return row;
+  }
+
+  /** Rekursif hanya untuk folder yang terbuka — DOM tetap kecil walau repo ribuan berkas. */
+  function renderTreeRowsInto(container: HTMLElement, parentPath: string, level: number): void {
+    const children = fileTreeIndex.get(parentPath);
+    if (!children) {
+      // Level belum dilevel-muat (lazy): tampilkan baris status saat sedang dibuka
+      if (treeExpanded.has(parentPath) || parentPath === '') {
+        container.appendChild(makeLevelStatusRow(parentPath, level));
+      }
+      return;
+    }
+    for (const entry of children) {
+      if (entry.type === 'directory') {
+        const isOpen = treeExpanded.has(entry.path);
+        container.appendChild(makeDirRow(entry, level, isOpen));
+        if (isOpen) renderTreeRowsInto(container, entry.path, level + 1);
+      } else {
+        container.appendChild(makeFileRow(entry, level));
+      }
+    }
+  }
+
+  /** Render ulang baris tree (dipakai chevron) sambil mempertahankan scroll & fokus tombol. */
+  function refreshTreeRows(): void {
+    const rowsEl = treePanelEl.querySelector<HTMLElement>('.fm-tree-rows');
+    if (!rowsEl) return;
+    treeScrollTop = treePanelEl.scrollTop;
+    rowsEl.innerHTML = '';
+    renderTreeRowsInto(rowsEl, '', 1);
+    treePanelEl.scrollTop = treeScrollTop;
+  }
 
   function renderTreePanel(): void {
+    treeScrollTop = treePanelEl.scrollTop;
     treePanelEl.innerHTML = `
       <div class="fm-tree-header">
-        <span>Folder Repositori</span>
+        <span>Struktur Repositori</span>
         <button id="btn-close-tree-mobile" class="btn btn-ghost btn-sm" style="display:none;padding:2px 6px" title="Tutup" type="button">
           ${iconClose(14)}
         </button>
@@ -630,53 +894,17 @@ export function renderFileManagerPage(
       closeMobileTree();
     });
 
-    const folderSet = new Set<string>();
-    folderSet.add(''); // Root
-
-    for (const f of fullTree) {
-      if (f.type === 'directory') {
-        folderSet.add(f.path);
-      } else {
-        const parts = f.path.split('/');
-        parts.pop();
-        let cur = '';
-        for (const p of parts) {
-          cur = cur ? `${cur}/${p}` : p;
-          folderSet.add(cur);
-        }
-      }
-    }
-
-    const sortedFolders = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
-
-    for (const folder of sortedFolders) {
-      const depth = folder === '' ? 0 : folder.split('/').length;
-      const isCurrent = folder === currentPath;
-      const isExpanded = currentPath === folder || (folder !== '' && currentPath.startsWith(`${folder}/`));
-      const name = folder === '' ? 'Akar' : folder.split('/').pop()!;
-      const folderIcon = getFileIconSvg('', true, 16, isExpanded || isCurrent);
-
-      const itemEl = document.createElement('div');
-      itemEl.className = `fm-tree-item ${isCurrent ? 'active' : ''}`;
-      itemEl.style.paddingLeft = `${depth * 14 + 8}px`;
-      itemEl.innerHTML = `${folderIcon} <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>`;
-
-      // Drag target
-      attachCrumbDropTarget(itemEl, folder);
-
-      itemEl.addEventListener('click', () => {
-        closeMobileTree();
-        if (folder !== currentPath) void navigateToFolder(folder);
-      });
-
-      treePanelEl.appendChild(itemEl);
-    }
+    const rowsEl = document.createElement('div');
+    rowsEl.className = 'fm-tree-rows';
+    renderTreeRowsInto(rowsEl, '', 1);
+    treePanelEl.appendChild(rowsEl);
+    treePanelEl.scrollTop = treeScrollTop;
   }
 
   // ── Render Daftar Berkas (Grid / List) ───────────────────────────────────
 
   function refreshFileList(): void {
-    contentPanelEl.querySelectorAll('.fm-grid, .fm-list, .empty-state').forEach((el) => el.remove());
+    contentPanelEl.querySelectorAll('.fm-grid, .fm-list, .empty-state, .fm-loading, .spinner').forEach((el) => el.remove());
 
     // Terapkan overlay perubahan tertunda
     let displayedEntries = applyStagedOverlay(entries, currentPath);
@@ -698,6 +926,14 @@ export function renderFileManagerPage(
         cmp = a.size - b.size;
       } else if (sortBy === 'date') {
         cmp = (a.lastCommitDate?.getTime() ?? 0) - (b.lastCommitDate?.getTime() ?? 0);
+      } else if (sortBy === 'type') {
+        // Grup per ekstensi; dalam grup yang sama diurutkan by nama.
+        const extOf = (n: string): string => {
+          const dot = n.lastIndexOf('.');
+          return dot > 0 ? n.slice(dot + 1).toLowerCase() : '';
+        };
+        cmp = extOf(a.name).localeCompare(extOf(b.name), undefined, { sensitivity: 'base' })
+          || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
       }
       return sortAsc ? cmp : -cmp;
     });
@@ -764,15 +1000,21 @@ export function renderFileManagerPage(
         toggleSelection(item.path, e.shiftKey);
       });
 
-      // Menu Opsi Tombol
-      card.querySelector('.fm-card-menu-btn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openItemMenu(item);
-      });
-
-      // Klik kartu
+      // Klik kartu — delegation TUNGGAL: cabang titik-3 dicek lebih dulu dan
+      // SELALU memutus navigasi (buka folder/pratinjau) pada klik titik-3.
       card.addEventListener('click', (e) => {
         if (e.target instanceof HTMLInputElement) return;
+
+        const clickTarget = e.target as Element | null;
+        const menuBtn = clickTarget?.closest?.('.fm-card-menu-btn');
+        if (menuBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const rect = menuBtn.getBoundingClientRect();
+          openItemMenu(item, { x: rect.left, y: rect.bottom + 4 });
+          return;
+        }
+
         if (e.ctrlKey || e.metaKey || e.shiftKey) {
           toggleSelection(item.path, e.shiftKey);
         } else if (isDir) {
@@ -787,6 +1029,13 @@ export function renderFileManagerPage(
             allFiles: items,
           });
         }
+      });
+
+      // Klik kanan: menu opsi langsung mengambang di titik kursor
+      card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openItemMenu(item, { x: e.clientX, y: e.clientY });
       });
 
       // Keyboard navigation pada kartu
@@ -903,13 +1152,26 @@ export function renderFileManagerPage(
         toggleSelection(item.path, (e as MouseEvent).shiftKey);
       });
 
-      row.querySelector('.row-menu-btn')?.addEventListener('click', (e) => {
+      // Klik kanan: menu opsi langsung mengambang di titik kursor
+      row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        openItemMenu(item);
+        openItemMenu(item, { x: e.clientX, y: e.clientY });
       });
 
       row.addEventListener('click', (e) => {
         if (e.target instanceof HTMLInputElement) return;
+
+        const rowTarget = e.target as Element | null;
+        const rowMenuBtn = rowTarget?.closest?.('.row-menu-btn');
+        if (rowMenuBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const rect = rowMenuBtn.getBoundingClientRect();
+          openItemMenu(item, { x: rect.left, y: rect.bottom + 4 });
+          return;
+        }
+
         if (e.ctrlKey || e.metaKey || e.shiftKey) {
           toggleSelection(item.path, (e as MouseEvent).shiftKey);
         } else if (isDir) {
@@ -1318,7 +1580,7 @@ export function renderFileManagerPage(
 
   // ── Menu Konteks Berkas / Folder ─────────────────────────────────────────
 
-  function openItemMenu(item: FileEntry): void {
+  function openItemMenu(item: FileEntry, position?: { x: number; y: number }): void {
     const isDir = item.type === 'directory';
 
     const actions = [];
@@ -1362,7 +1624,7 @@ export function renderFileManagerPage(
         icon: iconMove(18),
         label: 'Pindahkan ke…',
         onClick: () => {
-          openMoveToFolderPicker(item, fullTree, (target) => {
+          openMoveToFolderPicker(item, knownTreeEntries(), (target) => {
             const newPath = target ? `${target}/${item.name}` : item.name;
             stageMoveEntry(item.path, newPath, isDir, item.size);
             showToast('Item berhasil dipindahkan ke perubahan tertunda', 'success');
@@ -1387,8 +1649,11 @@ export function renderFileManagerPage(
         onClick: () => {
           if (isDir) {
             showToast('Menyiapkan arsip ZIP…', 'info');
-            const folderItems = fullTree.filter((f) => f.path.startsWith(`${item.path}/`));
-            void downloadFolderAsZip(repoType, repoId, item.path, folderItems, 'main', token);
+            // Scan rekursif hanya untuk folder ini (bukan seluruh repo)
+            void fetchFolderSubtree(repoType, repoId, item.path, 'main', token)
+              .then((folderItems) => downloadFolderAsZip(repoType, repoId, item.path, folderItems, 'main', token))
+              .then(() => showToast('Unduhan ZIP selesai', 'success'))
+              .catch(() => showToast('Gagal menyiapkan arsip ZIP folder', 'error'));
           } else {
             void triggerFileDownload(repoType, repoId, item.path, 'main', token);
           }
@@ -1408,11 +1673,99 @@ export function renderFileManagerPage(
       }
     );
 
-    openActionBottomSheet(
-      item.name,
-      isDir ? 'Folder Direktori' : formatBytes(item.size),
-      actions
-    );
+    // Desktop: menu mengambang tepat pada titik klik kanan / tombol titik-3.
+    // Layar sentuh tanpa posisi: tetap pakai bottom sheet yang nyaman di sentuh.
+    if (position) {
+      openItemContextMenu(item.name, actions, position);
+    } else {
+      openActionBottomSheet(
+        item.name,
+        isDir ? 'Folder Direktori' : formatBytes(item.size),
+        actions
+      );
+    }
+  }
+
+  /**
+   * Menu konteks melayang (klik kanan / titik-3): muncul di atas item,
+   * posisinya dijepit agar tidak keluar viewport, tertutup otomatis
+   * saat klik di luar, scroll, resize, atau tekan Escape.
+   */
+  function openItemContextMenu(
+    itemName: string,
+    actions: { icon: string; label: string; danger?: boolean; onClick: () => void }[],
+    at: { x: number; y: number }
+  ): void {
+    const menuEl = document.createElement('div');
+    menuEl.className = 'fm-context-menu';
+    menuEl.setAttribute('role', 'menu');
+    menuEl.setAttribute('aria-label', `Menu opsi ${itemName}`);
+    menuEl.innerHTML = `
+      <div class="fm-context-name" title="${esc(itemName)}">${esc(itemName)}</div>
+    `;
+
+    for (const act of actions) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `fm-context-item${act.danger ? ' danger' : ''}`;
+      btn.setAttribute('role', 'menuitem');
+      btn.innerHTML = `${act.icon}<span>${esc(act.label)}</span>`;
+      btn.addEventListener('click', () => {
+        cleanup();
+        act.onClick();
+      });
+      menuEl.appendChild(btn);
+    }
+
+    document.body.appendChild(menuEl);
+
+    // Jepit posisi agar seluruh menu terlihat di viewport
+    const rect = menuEl.getBoundingClientRect();
+    let x = at.x;
+    let y = at.y;
+    if (x + rect.width > window.innerWidth - 8) x = window.innerWidth - rect.width - 8;
+    if (y + rect.height > window.innerHeight - 8) y = Math.max(8, window.innerHeight - rect.height - 8);
+    if (x < 8) x = 8;
+    if (y < 8) y = 8;
+    menuEl.style.left = `${x}px`;
+    menuEl.style.top = `${y}px`;
+
+    // Tutup otomatis: klik luar, klik kanan di tempat lain, Escape, scroll, resize
+    function cleanup(): void {
+      try { menuEl.remove(); } catch { /* sudah terhapus */ }
+      document.removeEventListener('mousedown', onGlobalClick, true);
+      document.removeEventListener('contextmenu', onGlobalCtx, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    }
+
+    const onGlobalClick = (e: MouseEvent): void => {
+      if (e.target instanceof Node && menuEl.contains(e.target)) return;
+      cleanup();
+    };
+    const onGlobalCtx = (e: MouseEvent): void => {
+      if (e.target instanceof Node && menuEl.contains(e.target)) return;
+      e.preventDefault();
+      cleanup();
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup();
+      }
+    };
+    const onScroll = (): void => cleanup();
+
+    // setTimeout: pasca mousedown yang membuka menu, pasang listener passif
+    setTimeout(() => {
+      document.addEventListener('mousedown', onGlobalClick, true);
+      document.addEventListener('contextmenu', onGlobalCtx, true);
+    }, 0);
+
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
   }
 
   // ── Floating Staged Changes Bar (Glassmorphism dock) ──────────────────────
@@ -1427,20 +1780,53 @@ export function renderFileManagerPage(
     stagedBarEl.classList.add('visible');
     const { title, description } = generateCommitMessage();
 
+    // Peta label singkat per tipe operasi (Record, bukan Map — aturan linter)
+    const opLabels: Record<string, string> = {
+      add: 'add',
+      delete: 'del',
+      rename: 'rename',
+      move: 'move',
+      create_folder: 'dir',
+    };
+
+    // Daftar ringkas perubahan: op-badge berwarna + path mono terpotong
+    const listItems = changes
+      .slice(0, 5)
+      .map((c) => {
+        const opText = opLabels[c.type] ?? c.type;
+        const dest = c.newPath
+          ? `<span class="fm-staged-sep">→</span><span class="fm-staged-path-dest">${esc(c.newPath)}</span>`
+          : '';
+        return `
+          <div class="fm-staged-list-item">
+            <span class="fm-staged-op ${c.type}">${opText}</span>
+            <span class="fm-staged-path">${esc(c.path)}</span>
+            ${dest}
+          </div>
+        `;
+      })
+      .join('');
+    const more =
+      changes.length > 5
+        ? `<div class="fm-staged-list-more">+${changes.length - 5} perubahan lainnya</div>`
+        : '';
+
     stagedBarEl.innerHTML = `
-      <div style="display:flex;align-items:center;gap:0.75rem">
+      <div class="fm-staged-dock-head">
         <span class="fm-staged-badge">${changes.length}</span>
-        <span class="fm-staged-title" style="font-weight:600;font-size:0.875rem">Perubahan Belum Disimpan</span>
+        <span class="fm-staged-title">Perubahan belum disimpan</span>
       </div>
-      <div style="display:flex;align-items:center;gap:0.5rem">
+      <div class="fm-staged-list">${listItems}${more}</div>
+      <div class="fm-staged-dock-actions">
         <button id="btn-staged-review" class="fm-staged-btn-review" type="button">
-          ${iconEye(14)} <span>Tinjau Perubahan</span>
+          ${iconEye(14)} <span>Tinjau</span>
         </button>
         <button id="btn-staged-discard" class="fm-staged-btn-discard" type="button">
           ${iconTrash(14)} <span>Buang</span>
         </button>
+        <span class="fm-staged-spacer"></span>
         <button id="btn-staged-commit" class="fm-staged-btn-commit" type="button">
-          ${iconCheck(14)} <span>Commit &amp; Push</span>
+          ${iconCheck(14)} <span>Commit</span>
         </button>
       </div>
     `;
@@ -1484,8 +1870,18 @@ export function renderFileManagerPage(
 
       showToast(`Commit berhasil disimpan! (${res.oid.slice(0, 7)})`, 'success', 5000);
 
+      // Buang cache level tree (API & sidebar) agar structure baru muncul
+      invalidateTreeCache(repoType, repoId);
+      fileTreeIndex.clear();
+      treeFailed.clear();
+      treePending.clear();
+      treeExpanded.clear();
+      treeExpanded.add('');
+
       // Muat ulang commit HEAD dan berkas
       await loadDirectory(currentPath, true);
+      expandAncestors(currentPath);
+      renderTreePanel();
       updateStagedBar();
     } catch (err: unknown) {
       if (typeof err === 'object' && err !== null && 'isConflict' in err && Boolean(err.isConflict)) {
@@ -1514,6 +1910,7 @@ export function renderFileManagerPage(
     renderBreadcrumb();
     renderToolbar();
     renderSelectionBar();
+    expandAncestors(currentPath);
     renderTreePanel();
     await loadDirectory(currentPath);
   }
@@ -1522,11 +1919,12 @@ export function renderFileManagerPage(
     if (isLoading) return;
     isLoading = true;
 
-    // Tampilkan spinner
-    const spinner = createSpinner('md');
-    spinner.style.margin = '4rem auto';
+    // Tampilkan spinner — dipusatkan vertikal & horizontal di panel konten via .fm-loading
+    const spinnerWrap = document.createElement('div');
+    spinnerWrap.className = 'fm-loading';
+    spinnerWrap.appendChild(createSpinner('md'));
     contentPanelEl.innerHTML = '';
-    contentPanelEl.appendChild(spinner);
+    contentPanelEl.appendChild(spinnerWrap);
 
     try {
       // Muat commit HEAD jika belum ada
@@ -1537,13 +1935,9 @@ export function renderFileManagerPage(
       // Muat berkas direktori aktif
       entries = await fetchDirectoryContents(repoType, repoId, path, 'main', token, forceRefresh);
 
-      // Muat full tree di latar belakang untuk navigasi tree sidebar
-      fetchFullRepoTree(repoType, repoId, 'main', token, forceRefresh)
-        .then((tree) => {
-          fullTree = tree;
-          renderTreePanel();
-        })
-        .catch(() => {});
+      // SEED tree sidebar: level akar dimuat sekali (ringan, 1 request).
+      // Level lain mengikuti LAZY — hanya dimuat saat foldernya dibuka.
+      void ensureTreeLevel('');
 
       refreshFileList();
       updateStagedBar();
@@ -1711,5 +2105,7 @@ export function renderFileManagerPage(
 
   // Muat direktori awal
   renderHeader();
+  renderTreePanel();
+  void ensureTreeLevel('');
   void loadDirectory(currentPath);
 }

@@ -4,6 +4,7 @@
 
 import { navigate } from '../../router';
 import { t } from '../../i18n';
+import { iconSearch } from '../components/icons';
 
 export function renderNotFoundPage(container: HTMLElement): void {
   container.innerHTML = '';
@@ -14,7 +15,8 @@ export function renderNotFoundPage(container: HTMLElement): void {
 
   const emoji = document.createElement('div');
   emoji.className = 'empty-state-icon';
-  emoji.textContent = '🔍';
+  emoji.style.color = 'var(--hs-text-muted)';
+  emoji.innerHTML = iconSearch(48);
 
   const title = document.createElement('h1');
   title.className = 'empty-state-title';

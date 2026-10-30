@@ -5,7 +5,7 @@
 // ──────────────────────────────────────────────────────────────
 
 import type { AuthState } from '../auth/types';
-import { logout, startLogin } from '../auth';
+import { logout } from '../auth';
 import { navigate, onNavigate } from '../router';
 import { t } from '../i18n';
 import { initTheme, toggleTheme, getCurrentTheme } from './components/theme';
@@ -27,6 +27,7 @@ import {
 } from './components/icons';
 import { repoStore } from '../state/repo-store';
 import { appStore } from '../state/app-state';
+import { initCommandPalette, togglePalette } from './components/command-palette';
 // ── Referensi elemen DOM ─────────────────────────────────────
 
 let _header: HTMLElement | null = null;
@@ -169,38 +170,25 @@ export function updateBreadcrumbsFromPath(pathname: string): void {
   setHeaderBreadcrumbs([]);
 }
 
-// ── Search Indicator & Command Palette Trigger ─────────────────
-
-function handleSearchTrigger(): void {
-  const pageSearch =
-    document.querySelector<HTMLInputElement>('#repo-search-input') ||
-    document.querySelector<HTMLInputElement>('#file-search-input') ||
-    document.querySelector<HTMLInputElement>('input[type="search"]');
-
-  if (pageSearch) {
-    pageSearch.focus();
-    pageSearch.select();
-  } else {
-    navigate('/explore');
-  }
-}
+// ── Command Palette Trigger ────────────────────────────────────
 
 function createSearchIndicator(): HTMLElement {
   const wrapper = document.createElement('div');
   wrapper.className = 'header-center';
 
+  const isMac = /mac|iphone|ipad/i.test(navigator.userAgent);
   const btn = document.createElement('button');
   btn.className = 'header-search-indicator';
   btn.type = 'button';
-  btn.setAttribute('aria-label', 'Cari repo, dataset, model (Ctrl+K)');
+  btn.setAttribute('aria-label', 'Buka palette perintah (Ctrl+K)');
   btn.innerHTML = `
     <span aria-hidden="true">${iconSearch(14)}</span>
-    <span class="header-search-text">Cari repo, dataset, model…</span>
-    <kbd class="header-search-kbd">⌘K</kbd>
+    <span class="header-search-text">Cari atau jalankan perintah…</span>
+    <kbd class="header-search-kbd">${isMac ? '⌘K' : 'Ctrl K'}</kbd>
   `;
 
   btn.addEventListener('click', () => {
-    handleSearchTrigger();
+    togglePalette();
   });
 
   wrapper.appendChild(btn);
@@ -240,11 +228,8 @@ function createLoginButton(): HTMLButtonElement {
   btn.className = 'btn btn-primary btn-sm';
   btn.type = 'button';
   btn.textContent = t('auth.login');
-  btn.addEventListener('click', () => {
-    startLogin().catch((err: unknown) => {
-      console.error('[HuggingStudio] Gagal memulai login:', err);
-    });
-  });
+  // Arahkan ke halaman login khusus (return_to halaman saat ini disimpan oleh startLogin di /auth)
+  btn.addEventListener('click', () => navigate('/auth'));
   return btn;
 }
 
@@ -614,7 +599,7 @@ function renderSidebar(auth: AuthState): void {
         <span>Masuk Akun</span>
       </button>
     `;
-    loginPrompt.querySelector('#sidebar-login-btn')?.addEventListener('click', startLogin);
+    loginPrompt.querySelector('#sidebar-login-btn')?.addEventListener('click', () => navigate('/auth'));
     nav.appendChild(loginPrompt);
   }
 
@@ -890,13 +875,9 @@ export function renderShell(): void {
   // Sinkronkan breadcrumb awal
   updateBreadcrumbsFromPath(window.location.pathname);
 
-  // Keyboard shortcut Ctrl+K / Cmd+K untuk search indicator
-  document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      handleSearchTrigger();
-    }
-  });
+  // Palette perintah: Ctrl/⌘+K, Esc, dan klik indikator header
+  // dikelola oleh modul command-palette
+  initCommandPalette();
 
   // Keyboard: tutup sidebar dengan Escape
   document.addEventListener('keydown', (e) => {

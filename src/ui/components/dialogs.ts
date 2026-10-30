@@ -4,6 +4,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { openModal } from './modal';
+import { iconFolder, iconFile, iconAlertCircle } from './icons';
 import { pendingChanges } from '../../state/pending-changes';
 import { startLogin } from '../../auth';
 /** Sanitasi string */
@@ -149,7 +150,7 @@ export function showDeleteConfirmDialog(
     .map(
       (it) => `
       <li style="padding:0.25rem 0;display:flex;align-items:center;gap:0.5rem;font-family:monospace;font-size:0.85rem">
-        <span>${it.isDirectory ? '📁' : '📄'}</span>
+        <span style="flex-shrink:0;display:flex;color:var(--hs-text-muted)">${it.isDirectory ? iconFolder(15) : iconFile(15)}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.path)}</span>
       </li>`
     )
@@ -297,7 +298,7 @@ export function showCommitReviewDialog(
           text = esc(c.path);
           break;
         case 'create_folder':
-          badge = '<span class="badge" style="background:#e0e7ff;color:#4338ca">📁 Folder</span>';
+          badge = '<span class="badge" style="background:#e5e7eb;color:#374151;display:inline-flex;align-items:center;gap:4px">Folder</span>';
           text = esc(c.path.replace(/\/\.gitkeep$/, ''));
           break;
         case 'delete':
@@ -423,7 +424,7 @@ export function showCommitConflictDialog(onReload: () => void): void {
   const content = document.createElement('div');
   content.innerHTML = `
     <div style="display:flex;gap:1rem;align-items:flex-start">
-      <div style="font-size:2rem;line-height:1">💥</div>
+      <div style="line-height:1;color:var(--error, #ef4444);flex-shrink:0">${iconAlertCircle(28)}</div>
       <div>
         <p style="font-weight:600;margin-bottom:0.5rem">
           Repositori telah diubah oleh pihak lain!

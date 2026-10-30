@@ -1,22 +1,16 @@
 // ──────────────────────────────────────────────────────────────
 // Theme — light / dark toggle
-// Preferensi disimpan di sessionStorage dengan key 'hs-theme'.
+// Obsidian Dark adalah default produk; preferensi disimpan di
+// sessionStorage dengan key 'hs-theme'.
 // ──────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = 'hs-theme';
 
-/** Baca preferensi dari sessionStorage, lalu system preference. */
+/** Baca preferensi dari sessionStorage; default produk = dark. */
 export function getCurrentTheme(): 'light' | 'dark' {
   const stored = sessionStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') return stored;
-
-  // Fallback: ikuti preferensi sistem
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  }
-  return 'light';
+  return 'dark';
 }
 
 /** Terapkan tema ke <html data-theme="..."> dan simpan. */

@@ -1,0 +1,72 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "HuggingStudio — Halaman Utama" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e16]: HuggingStudio
+          - generic [ref=e17]: PRO
+        - navigation "Breadcrumb" [ref=e18]:
+          - generic [aria-hidden] [ref=e19]: /
+          - link "Novabase" [ref=e20] [cursor=pointer]:
+            - /url: /Novabase
+          - generic [aria-hidden] [ref=e21]: /
+          - link "Drive-Example" [ref=e22] [cursor=pointer]:
+            - /url: /Novabase/Drive-Example/dataset
+          - generic [aria-hidden] [ref=e23]: /
+          - generic [ref=e24] [cursor=pointer]: Girls©/AI
+      - button "Buka palette perintah (Ctrl+K)" [ref=e26] [cursor=pointer]:
+        - generic [ref=e31]: Cari atau jalankan perintah…
+        - generic [ref=e32]: Ctrl K
+      - generic [ref=e33]:
+        - button "Light Mode" [ref=e34] [cursor=pointer]
+        - button "Sign In" [ref=e42] [cursor=pointer]
+  - generic [ref=e43]:
+    - complementary "Navigasi" [ref=e44]:
+      - navigation "Navigasi utama" [ref=e46]:
+        - link "My Repos" [ref=e47] [cursor=pointer]:
+          - /url: /
+        - link "Explore" [ref=e51] [cursor=pointer]:
+          - /url: /explore
+        - generic [ref=e56]:
+          - paragraph [ref=e57]: Masuk untuk melihat dan mengelola dataset dan model Anda.
+          - button "Masuk Akun" [ref=e58] [cursor=pointer]
+    - main [ref=e67]:
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - link "Kembali ke profil" [ref=e72] [cursor=pointer]:
+                - /url: /Novabase
+              - generic [ref=e75]:
+                - heading "Novabase/ Drive-Example" [level=1] [ref=e76]:
+                  - generic [ref=e77]: Novabase/
+                  - generic [ref=e78]: Drive-Example
+                - generic [ref=e79]: DATASET
+            - generic [ref=e80]:
+              - button "Folder" [ref=e81] [cursor=pointer]
+              - button "Muat ulang isi folder" [ref=e85] [cursor=pointer]
+          - navigation "Jalur folder" [ref=e91]:
+            - generic [ref=e92] [cursor=pointer]: Akar
+            - button "Edit jalur folder" [ref=e97] [cursor=pointer]
+            - generic [ref=e104] [cursor=pointer]: Girls©
+            - generic [ref=e111] [cursor=pointer]: AI
+          - generic [ref=e115]:
+            - generic [ref=e116]:
+              - button "Unggah" [ref=e118] [cursor=pointer]
+              - button "Folder Baru" [ref=e125] [cursor=pointer]
+              - button "Riwayat" [ref=e128] [cursor=pointer]
+              - button "Baru Dihapus" [ref=e134] [cursor=pointer]
+            - generic [ref=e139]:
+              - searchbox "Cari berkas dalam repositori" [ref=e141]
+              - combobox [ref=e142] [cursor=pointer]:
+                - option "Nama (A-Z)" [selected]
+                - option "Nama (Z-A)"
+                - option "Ukuran Terbesar"
+                - option "Ukuran Terkecil"
+                - option "Terbaru Diubah"
+              - generic [ref=e143]:
+                - button "Tampilan Kotak" [ref=e144] [cursor=pointer]
+                - button "Tampilan Tabel" [ref=e150] [cursor=pointer]
+        - region "Penjelajah Berkas Repositori" [ref=e154]:
+          - status "Memuat…" [ref=e155]

@@ -1,0 +1,253 @@
+/* ============================================================
+   Command Palette 2.0 — HuggingStudio (⌘K / Ctrl+K)
+   Surface paling kontras di app: palette + legend pintasan.
+   ============================================================ */
+
+body.palette-open {
+  overflow: hidden;
+}
+
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(2 4 8 / 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-4);
+  padding-top: max(11vh, calc(var(--header-h) + var(--space-4)));
+  z-index: calc(var(--z-modal) + 20);
+  animation: palette-fade 0.14s var(--ease-out) forwards;
+  overscroll-behavior: contain;
+}
+[data-theme="light"] .palette-overlay {
+  background-color: rgb(16 24 40 / 0.38);
+}
+@keyframes palette-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.palette {
+  width: 100%;
+  max-width: 600px;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  max-height: min(64vh, 520px);
+  overflow: hidden;
+  outline: none;
+  animation: palette-pop 0.18s var(--ease-out) forwards;
+}
+@keyframes palette-pop {
+  from { opacity: 0; transform: scale(0.98) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Baris pencarian */
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.palette-input-icon {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.palette-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-14);
+  height: 30px;
+  outline: none;
+  font-family: inherit;
+}
+.palette-input::placeholder { color: var(--text-subtle); }
+.palette-esc {
+  flex-shrink: 0;
+  border-bottom-width: 1px;
+}
+
+/* Daftar item */
+.palette-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-1);
+}
+.palette-group {
+  font-size: var(--fs-11);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  position: sticky;
+  top: 0;
+  background: var(--surface-overlay);
+  z-index: 1;
+}
+.palette-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 36px;
+  padding: 0.25rem var(--space-3);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: var(--fs-13);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color var(--dur-fast);
+}
+.palette-item .palette-item-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.palette-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.palette-item-label {
+  color: var(--text);
+  font-weight: var(--fw-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-item-hint {
+  font-size: var(--fs-11);
+  color: var(--text-subtle);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-item-kbd { flex-shrink: 0; }
+
+.palette-item.active {
+  background-color: var(--surface-hover);
+}
+.palette-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent);
+}
+.palette-item.active .palette-item-icon { color: var(--accent); }
+
+.palette-empty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  font-size: var(--fs-13);
+  color: var(--text-subtle);
+}
+
+/* Footer hint */
+.palette-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0.5rem 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-11);
+  color: var(--text-subtle);
+  flex-shrink: 0;
+}
+.palette-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* ============================================================
+   SHORTCUT LEGEND (tombol "?")
+   ============================================================ */
+.shortcut-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(2 4 8 / 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: calc(var(--z-modal) + 20);
+  animation: palette-fade 0.14s var(--ease-out) forwards;
+}
+[data-theme="light"] .shortcut-overlay {
+  background-color: rgb(16 24 40 / 0.38);
+}
+.shortcut-sheet {
+  width: 100%;
+  max-width: 520px;
+  background-color: var(--surface-overlay);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: palette-pop 0.18s var(--ease-out) forwards;
+}
+.shortcut-sheet-title {
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1) var(--space-5);
+}
+@media (max-width: 560px) {
+  .shortcut-grid { grid-template-columns: 1fr; }
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 30px;
+  font-size: var(--fs-13);
+  color: var(--text-muted);
+}
+.shortcut-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}

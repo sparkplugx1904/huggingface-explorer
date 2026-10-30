@@ -191,7 +191,58 @@ export async function fetchFullRepoTree(
   return entries;
 }
 
-// ── Unduh Berkas Langsung ─────────────────────────────────────────────────
+// ── Subtree Folder Tertentu (Rekursif Ter-scope) ──────────────────────────
+
+/**
+ * Mengambil seluruh berkas di DALAM satu folder tertentu secara rekursif.
+ * Jauh lebih ringan daripada memindai seluruh repo — hanya sub-pohon folder
+ * yang diminta (dipakai untuk unduhan ZIP folder tanpa full-tree scan).
+ */
+export async function fetchFolderSubtree(
+  repoType: RepoType,
+  repoId: string,
+  folderPath: string,
+  revision: string = 'main',
+  token?: string | null,
+  forceRefresh: boolean = false
+): Promise<FileEntry[]> {
+  if (!repoId || !repoId.trim()) {
+    return [];
+  }
+  const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '');
+  // Kunci memakai awalan sama dengan cache lain agar ikut terhapus invalidateTreeCache
+  const cacheKey = `${repoType}:${repoId}:${revision}:${normalizedPath}:subtree`;
+  if (!forceRefresh) {
+    const cached = fullRepoCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.entries;
+    }
+  }
+
+  const entries: FileEntry[] = [];
+  const credentials = token ? { accessToken: token } : undefined;
+
+  const encodedPathForHub = normalizedPath
+    ? normalizedPath.split('/').map(encodeURIComponent).join('/')
+    : '';
+
+  const iterator = listFiles({
+    repo: { type: repoType, name: repoId },
+    path: encodedPathForHub,
+    recursive: true,
+    expand: false,
+    revision,
+    credentials,
+  });
+
+  for await (const item of iterator) {
+    const entry = mapHubEntryToFileEntry(item);
+    entries.push(entry);
+  }
+
+  fullRepoCache.set(cacheKey, { timestamp: Date.now(), entries });
+  return entries;
+}
 
 /**
  * Membangun URL unduh raw atau resolve langsung ke Hugging Face Hub.

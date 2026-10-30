@@ -21,6 +21,9 @@
 /* 6. File manager */
 @import "./file-manager.css";
 
+/* 6b. Command palette & shortcut legend */
+@import "./palette.css";
+
 /* 7. Viewers multi-format */
 @import "./viewers.css";
 

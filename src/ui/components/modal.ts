@@ -333,6 +333,10 @@ export function openModal(opts: ModalOptions): ModalCloseFn {
       overlay.remove();
     }, { once: true });
 
+    // Fallback bila animasi exit tidak berjalan (keyframe hilang/reduced motion):
+    // pastikan overlay selalu terhapus dari DOM.
+    window.setTimeout(() => overlay.remove(), 400);
+
     onClose?.();
   }
 

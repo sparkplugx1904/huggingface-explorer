@@ -203,7 +203,7 @@ export async function startLogin(): Promise<void> {
     // Simpan rute saat ini agar setelah callback user kembali ke lokasi yang sama
     try {
       const returnUrl = pathname + search;
-      if (pathname !== '/callback' && pathname !== '/login') {
+      if (pathname !== '/callback' && pathname !== '/auth') {
         sessionStorage.setItem('hs:auth:return_to', returnUrl);
       }
     } catch {
@@ -216,7 +216,7 @@ export async function startLogin(): Promise<void> {
     // Pastikan jika berada di subdomain preview Cloudflare Pages, arahkan ke domain kanonikal
     // agar PKCE verifier dan redirect_uri berada pada origin yang sama persis
     if (hostname.endsWith('.pages.dev') && hostname !== 'huggingstudio.pages.dev') {
-      window.location.assign('https://huggingstudio.pages.dev/login');
+      window.location.assign('https://huggingstudio.pages.dev/auth');
       return;
     }
   }

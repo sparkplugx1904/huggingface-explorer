@@ -37,6 +37,11 @@ const ROUTE_DEFS: RouteDef[] = [
     paramNames: [],
   },
   {
+    name: 'auth',
+    pattern: /^\/auth\/?$/,
+    paramNames: [],
+  },
+  {
     name: 'explore',
     pattern: /^\/explore\/?$/,
     paramNames: [],

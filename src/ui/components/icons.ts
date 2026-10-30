@@ -303,6 +303,15 @@ export function iconAlertCircle(size = 20, className = ''): string {
   );
 }
 
+/** Info circle icon (titik di atas + garis di bawah, dalam lingkaran penuh) */
+export function iconInfo(size = 20, className = ''): string {
+  return createSvg(
+    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+    size,
+    className,
+  );
+}
+
 /** Plus / Add icon */
 export function iconPlus(size = 20, className = ''): string {
   return createSvg(

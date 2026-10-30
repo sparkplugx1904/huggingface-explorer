@@ -6,8 +6,9 @@
 import './styles/main.css';
 
 import { initAuth, tokenStore } from './auth';
+import { initMediaVaultGc } from './api/media-cache';
 import { appStore } from './state/app-state';
-import { initRouter, onNavigate } from './router';
+import { initRouter, onNavigate, navigate } from './router';
 import { detectLocale, setLocale } from './i18n';
 import { initTheme } from './ui/components/theme';
 import { renderShell, updateShellAuth, getMainEl } from './ui/shell';
@@ -16,6 +17,7 @@ import { showToast } from './ui/components/toast';
 import { showSessionExpiredDialog } from './ui/components/dialogs';
 // Halaman — static import (semua diketahui saat author-time; code-split oleh Vite via manualChunks)
 import { renderLoginPage } from './ui/pages/login';
+import { renderHomePage } from './ui/pages/home';
 import { renderCallbackPage } from './ui/pages/callback';
 import { renderRepoListPage } from './ui/pages/repo-list';
 import { renderNotFoundPage } from './ui/pages/not-found';
@@ -49,6 +51,17 @@ function handleRoute(route: Route): void {
       const auth = appStore.value.auth;
       if (auth.token) {
         renderRepoListPage(container);
+      } else {
+        // Beranda publik — tanpa form login; login pindah ke rute /auth.
+        renderHomePage(container);
+      }
+      break;
+    }
+
+    case 'auth': {
+      // Halaman login khusus. Sudah login? Kembali ke beranda.
+      if (appStore.value.auth.token) {
+        navigate('/', true);
       } else {
         renderLoginPage(container);
       }
@@ -102,6 +115,9 @@ async function boot(): Promise<void> {
   // 1. Terapkan tema & bahasa sebelum render apapun (hindari flash)
   initTheme();
   setLocale(detectLocale());
+
+  // 1b. Nyalakan GC Media Vault (purge entri kadaluwarsa > 8 jam & LRU)
+  initMediaVaultGc();
 
   // 2. Inisialisasi auth (cek callback OAuth / session tersimpan di sessionStorage)
   const authState = await initAuth();

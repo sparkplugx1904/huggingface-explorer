@@ -1042,7 +1042,7 @@ export function renderRepoListPage(container: HTMLElement, initialOwner?: string
         actionLabel: 'Masuk Sekarang',
         actionType: 'primary',
         onAction: () => {
-          navigate('/login');
+          navigate('/auth');
         },
       });
       return;

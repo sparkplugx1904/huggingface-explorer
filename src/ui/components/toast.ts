@@ -3,6 +3,8 @@
  * Accessible, auto-dismissing toasts stacked bottom-right (bottom-center on mobile).
  */
 
+import { iconCheck, iconClose, iconAlertCircle, iconInfo } from './icons';
+
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 /** Identifier returned by `window.setTimeout`, used to cancel pending dismissals. */
@@ -17,10 +19,10 @@ const MAX_TOASTS = 3;
 const DEFAULT_DURATION = 3500;
 
 const ICONS: Record<ToastType, string> = {
-  success: '✓',
-  error:   '✕',
-  warning: '⚠',
-  info:    'ℹ',
+  success: iconCheck(15),
+  error:   iconClose(15),
+  warning: iconAlertCircle(15),
+  info:    iconInfo(15),
 };
 
 let container: HTMLElement | null = null;
@@ -44,6 +46,9 @@ function removeToast(item: ToastItem): void {
   item.el.addEventListener('animationend', () => {
     item.el.remove();
   }, { once: true });
+
+  // Fallback: toast harus selalu terhapus walau animasi exit gagal.
+  window.setTimeout(() => item.el.remove(), 450);
 
   const idx = activeToasts.indexOf(item);
   if (idx !== -1) activeToasts.splice(idx, 1);
@@ -78,7 +83,7 @@ export function showToast(
   const icon = document.createElement('span');
   icon.className = 'toast-icon';
   icon.setAttribute('aria-hidden', 'true');
-  icon.textContent = ICONS[type];
+  icon.innerHTML = ICONS[type];
 
   // Message
   const msg = document.createElement('span');
