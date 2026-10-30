@@ -7,6 +7,7 @@ dist
 
 # AI / LLM / Agent Context & History Files
 AGENTS.md
+.playwright-mcp/
 CLAUDE.md
 *.html.bak
 omp-session-*.html
